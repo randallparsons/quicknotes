@@ -6,6 +6,7 @@ require('dotenv').config();
 const db = require('./db/db');
 const authRoutes = require('./routes/authRoutes');
 const noteRoutes = require('./routes/noteRoutes');
+const itemRoutes = require('./routes/itemRoutes');
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.use(session({
 
 app.use('/api', authRoutes);
 app.use('/api', noteRoutes);
+app.use('/api', itemRoutes);
 
 app.get('/api/test', async (req, res) => {
   try {
