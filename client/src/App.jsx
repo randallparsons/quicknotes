@@ -16,6 +16,8 @@ function App() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
 
+  const [childItems, setChildItems] = useState([]);
+  const [childStatus, setChildStatus] = useState('');
   const [mediaItems, setMediaItems] = useState([]);
   const [mediaStatus, setMediaStatus] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
@@ -36,9 +38,12 @@ function App() {
 
     if (!selectedId) {
       setMediaItems([]);
+      setChildItems([]);
+      setChildStatus('');
       return;
     }
 
+    loadChildItems(selectedId);
     loadMediaForItem(selectedId);
   }, [selectedId]);
 
@@ -100,6 +105,64 @@ function App() {
     } catch (error) {
       console.error('Load HyperList items failed:', error);
       setStatus('Failed to load HyperList items.');
+    }
+  }
+
+  async function loadChildItems(parentId) {
+    try {
+      setChildStatus('Loading child items...');
+
+      const response = await fetch(`${API_BASE}/items?parentId=${parentId}`, {
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load child items');
+      }
+
+      setChildItems(data);
+      setChildStatus(data.length === 0 ? 'No child items yet.' : '');
+    } catch (error) {
+      console.error('Load child items failed:', error);
+      setChildItems([]);
+      setChildStatus('Failed to load child items.');
+    }
+  }
+
+  async function createChildItem() {
+    if (!selectedId) {
+      setStatus('Select an item before creating a child item.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/items`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          title: 'Untitled Child Item',
+          description: '',
+          parentId: selectedId
+        })
+      });
+
+      const newItem = await response.json();
+
+      if (!response.ok) {
+        throw new Error(newItem.error || 'Failed to create child item');
+      }
+
+      setChildItems((prevItems) => [newItem, ...prevItems]);
+      setChildStatus('');
+      setStatus('New child item created.');
+    } catch (error) {
+      console.error('Create child item failed:', error);
+      setStatus('Failed to create child item.');
     }
   }
 
@@ -225,6 +288,8 @@ function App() {
       setDescription('');
       setMediaItems([]);
       setMediaStatus('');
+      setChildItems([]);
+      setChildStatus('');
       setStatus('Logged out.');
     } catch (error) {
       console.error('Logout failed:', error);
@@ -236,6 +301,43 @@ function App() {
     setSelectedId(item.id);
     setTitle(item.title);
     setDescription(item.description || '');
+  }
+
+  async function goUpOneLevel() {
+    if (!selectedId) return;
+
+    try {
+      const currentResponse = await fetch(`${API_BASE}/items/${selectedId}`, {
+        credentials: 'include'
+      });
+
+      const currentItem = await currentResponse.json();
+
+      if (!currentResponse.ok) {
+        throw new Error(currentItem.error || 'Failed to check current item');
+      }
+
+      if (!currentItem.parent_id) {
+        setStatus('Already at the root level.');
+        return;
+      }
+
+      const parentResponse = await fetch(`${API_BASE}/items/${currentItem.parent_id}`, {
+        credentials: 'include'
+      });
+
+      const parentItem = await parentResponse.json();
+
+      if (!parentResponse.ok) {
+        throw new Error(parentItem.error || 'Failed to load parent item');
+      }
+
+      selectItem(parentItem);
+      setStatus('Moved up one level.');
+    } catch (error) {
+      console.error('Move up one level failed:', error);
+      setStatus('Failed to move up one level.');
+    }
   }
 
   async function createItem() {
@@ -466,6 +568,9 @@ function App() {
           </div>
 
           <div className="editor-actions">
+            <button onClick={goUpOneLevel} disabled={!selectedId}>
+              Up One Level
+            </button>
             <button onClick={deleteItem} disabled={!selectedId}>
               Delete Item
             </button>
@@ -491,6 +596,36 @@ function App() {
             </section>
 
             <aside className="media-panel">
+              <section className="child-panel">
+                <div className="media-panel-header">
+                  <h3>Child Items</h3>
+                  <button onClick={createChildItem}>
+                    New Child
+                  </button>
+                </div>
+
+                {childStatus && <p className="media-status">{childStatus}</p>}
+
+                <div className="child-list">
+                  {childItems.map((child) => (
+                    <button
+                      key={child.id}
+                      className="child-card"
+                      onClick={() => selectItem(child)}
+                    >
+                      <strong>{child.title || 'Untitled Child Item'}</strong>
+                      <span>
+                        {child.description
+                          ? child.description.slice(0, 50)
+                          : 'No description yet...'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              <div className="panel-divider" />
+
               <div className="media-panel-header">
                 <h3>Attached Media</h3>
                 <button onClick={() => loadMediaForItem(selectedId)}>
