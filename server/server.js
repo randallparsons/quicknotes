@@ -8,6 +8,7 @@ const db = require('./db/db');
 const authRoutes = require('./routes/authRoutes');
 const noteRoutes = require('./routes/noteRoutes');
 const mediaRoutes = require('./routes/mediaRoutes');
+const itemRoutes = require('./routes/itemRoutes');
 
 const app = express();
 
@@ -43,6 +44,7 @@ app.use(session({
 
 app.use('/api', authRoutes);
 app.use('/api', noteRoutes);
+app.use('/api', itemRoutes);
 app.use('/api/media', mediaRoutes);
 
 app.get('/api/test', async (req, res) => {
