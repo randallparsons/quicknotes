@@ -1,11 +1,13 @@
 const express = require('express');
 const cors = require('cors');
 const session = require('express-session');
+const path = require('path');
 require('dotenv').config();
 
 const db = require('./db/db');
 const authRoutes = require('./routes/authRoutes');
 const noteRoutes = require('./routes/noteRoutes');
+const mediaRoutes = require('./routes/mediaRoutes');
 
 const app = express();
 
@@ -26,6 +28,7 @@ app.use(cors({
 }));
 
 app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use(session({
   secret: process.env.SESSION_SECRET,
@@ -40,6 +43,7 @@ app.use(session({
 
 app.use('/api', authRoutes);
 app.use('/api', noteRoutes);
+app.use('/api/media', mediaRoutes);
 
 app.get('/api/test', async (req, res) => {
   try {
