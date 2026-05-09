@@ -9,11 +9,11 @@ function App() {
   const [password, setPassword] = useState('');
 
   const [user, setUser] = useState(null);
-  const [notes, setNotes] = useState([]);
+  const [items, setItems] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
 
   const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
+  const [description, setDescription] = useState('');
 
   const [status, setStatus] = useState('');
 
@@ -25,11 +25,11 @@ function App() {
     if (!selectedId) return;
 
     const timeout = setTimeout(() => {
-      saveNote();
+      saveItem();
     }, 600);
 
     return () => clearTimeout(timeout);
-  }, [title, body]);
+  }, [title, description]);
 
   async function checkSession() {
     try {
@@ -41,38 +41,38 @@ function App() {
 
       const data = await response.json();
       setUser(data.user);
-      await loadNotes();
+      await loadItems();
     } catch (error) {
       console.error('Session check failed:', error);
     }
   }
 
-  async function loadNotes() {
+  async function loadItems() {
     try {
-      const response = await fetch(`${API_BASE}/notes`, {
+      const response = await fetch(`${API_BASE}/items`, {
         credentials: 'include'
       });
 
       if (!response.ok) {
-        throw new Error('Failed to load notes');
+        throw new Error('Failed to load HyperList items');
       }
 
       const data = await response.json();
-      setNotes(data);
+      setItems(data);
 
       if (data.length > 0) {
-        const firstNote = data[0];
-        setSelectedId(firstNote.id);
-        setTitle(firstNote.title);
-        setBody(firstNote.body || '');
+        const firstItem = data[0];
+        setSelectedId(firstItem.id);
+        setTitle(firstItem.title);
+        setDescription(firstItem.description || '');
       } else {
         setSelectedId(null);
         setTitle('');
-        setBody('');
+        setDescription('');
       }
     } catch (error) {
-      console.error('Load notes failed:', error);
-      setStatus('Failed to load notes.');
+      console.error('Load HyperList items failed:', error);
+      setStatus('Failed to load HyperList items.');
     }
   }
 
@@ -109,7 +109,7 @@ function App() {
       setEmail('');
       setPassword('');
       setStatus('Login successful.');
-      await loadNotes();
+      await loadItems();
     } catch (error) {
       console.error('Auth error:', error);
       setStatus('Something went wrong.');
@@ -124,10 +124,10 @@ function App() {
       });
 
       setUser(null);
-      setNotes([]);
+      setItems([]);
       setSelectedId(null);
       setTitle('');
-      setBody('');
+      setDescription('');
       setStatus('Logged out.');
     } catch (error) {
       console.error('Logout failed:', error);
@@ -135,80 +135,82 @@ function App() {
     }
   }
 
-  function selectNote(note) {
-    setSelectedId(note.id);
-    setTitle(note.title);
-    setBody(note.body || '');
+  function selectItem(item) {
+    setSelectedId(item.id);
+    setTitle(item.title);
+    setDescription(item.description || '');
   }
 
-  async function createNote() {
+  async function createItem() {
     try {
-      const response = await fetch(`${API_BASE}/notes`, {
+      const response = await fetch(`${API_BASE}/items`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         credentials: 'include',
         body: JSON.stringify({
-          title: 'Untitled Note',
-          body: ''
+          title: 'Untitled Item',
+          description: '',
+          parentId: null
         })
       });
 
-      const newNote = await response.json();
+      const newItem = await response.json();
 
       if (!response.ok) {
-        throw new Error(newNote.error || 'Failed to create note');
+        throw new Error(newItem.error || 'Failed to create HyperList item');
       }
 
-      const updatedNotes = [newNote, ...notes];
-      setNotes(updatedNotes);
-      setSelectedId(newNote.id);
-      setTitle(newNote.title);
-      setBody(newNote.body || '');
+      const updatedItems = [newItem, ...items];
+      setItems(updatedItems);
+      setSelectedId(newItem.id);
+      setTitle(newItem.title);
+      setDescription(newItem.description || '');
+      setStatus('New HyperList item created.');
     } catch (error) {
-      console.error('Create note failed:', error);
-      setStatus('Failed to create note.');
+      console.error('Create HyperList item failed:', error);
+      setStatus('Failed to create HyperList item.');
     }
   }
 
-  async function saveNote() {
+  async function saveItem() {
     if (!selectedId) return;
 
     try {
-      const response = await fetch(`${API_BASE}/notes/${selectedId}`, {
+      const response = await fetch(`${API_BASE}/items/${selectedId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
         credentials: 'include',
-        body: JSON.stringify({ title, body })
+        body: JSON.stringify({ title, description })
       });
 
-      const updatedNote = await response.json();
+      const updatedItem = await response.json();
 
       if (!response.ok) {
-        throw new Error(updatedNote.error || 'Failed to save note');
+        throw new Error(updatedItem.error || 'Failed to save HyperList item');
       }
 
-      setNotes((prevNotes) =>
-        prevNotes.map((note) =>
-          note.id === selectedId ? updatedNote : note
+      setItems((prevItems) =>
+        prevItems.map((item) =>
+          item.id === selectedId ? updatedItem : item
         )
       );
 
       setStatus('Saved');
     } catch (error) {
-      console.error('Save note failed:', error);
-      setStatus('Failed to save note.');
+      console.error('Save HyperList item failed:', error);
+      setStatus('Failed to save HyperList item.');
     }
   }
 
-  async function deleteNote() {
+  async function deleteItem() {
     if (!selectedId) return;
 
     try {
-      const response = await fetch(`${API_BASE}/notes/${selectedId}`, {
+      const response = await fetch(`${API_BASE}/items/${selectedId}`, {
         method: 'DELETE',
         credentials: 'include'
       });
@@ -216,27 +218,27 @@ function App() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete note');
+        throw new Error(data.error || 'Failed to delete HyperList item');
       }
 
-      const updatedNotes = notes.filter((note) => note.id !== selectedId);
-      setNotes(updatedNotes);
+      const updatedItems = items.filter((item) => item.id !== selectedId);
+      setItems(updatedItems);
 
-      if (updatedNotes.length > 0) {
-        const nextNote = updatedNotes[0];
-        setSelectedId(nextNote.id);
-        setTitle(nextNote.title);
-        setBody(nextNote.body || '');
+      if (updatedItems.length > 0) {
+        const nextItem = updatedItems[0];
+        setSelectedId(nextItem.id);
+        setTitle(nextItem.title);
+        setDescription(nextItem.description || '');
       } else {
         setSelectedId(null);
         setTitle('');
-        setBody('');
+        setDescription('');
       }
 
-      setStatus('Note deleted.');
+      setStatus('HyperList item deleted.');
     } catch (error) {
-      console.error('Delete note failed:', error);
-      setStatus('Failed to delete note.');
+      console.error('Delete HyperList item failed:', error);
+      setStatus('Failed to delete HyperList item.');
     }
   }
 
@@ -244,8 +246,8 @@ function App() {
     return (
       <div className="auth-page">
         <div className="auth-card">
-          <h1>QuickNotes</h1>
-          <p className="subtitle">A minimalist note-taking app</p>
+          <h1>HyperList</h1>
+          <p className="subtitle">A nested full-stack content organizer</p>
 
           <div className="auth-toggle">
             <button
@@ -292,22 +294,26 @@ function App() {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="sidebar-header">
-          <h2>QuickNotes</h2>
-          <button onClick={createNote}>New Note</button>
+          <h2>HyperList</h2>
+          <button onClick={createItem}>New Root Item</button>
         </div>
 
         <div className="notes-list">
-          {notes.length === 0 ? (
-            <p className="empty-message">No notes yet.</p>
+          {items.length === 0 ? (
+            <p className="empty-message">No HyperList items yet.</p>
           ) : (
-            notes.map((note) => (
+            items.map((item) => (
               <button
-                key={note.id}
-                className={`note-item ${selectedId === note.id ? 'selected' : ''}`}
-                onClick={() => selectNote(note)}
+                key={item.id}
+                className={`note-item ${selectedId === item.id ? 'selected' : ''}`}
+                onClick={() => selectItem(item)}
               >
-                <strong>{note.title || 'Untitled Note'}</strong>
-                <span>{note.body ? note.body.slice(0, 40) : 'No content yet...'}</span>
+                <strong>{item.title || 'Untitled Item'}</strong>
+                <span>
+                  {item.description
+                    ? item.description.slice(0, 40)
+                    : 'No description yet...'}
+                </span>
               </button>
             ))
           )}
@@ -322,8 +328,8 @@ function App() {
           </div>
 
           <div className="editor-actions">
-            <button onClick={deleteNote} disabled={!selectedId}>
-              Delete Note
+            <button onClick={deleteItem} disabled={!selectedId}>
+              Delete Item
             </button>
             <button onClick={handleLogout}>Logout</button>
           </div>
@@ -336,17 +342,17 @@ function App() {
               type="text"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
-              placeholder="Note title"
+              placeholder="Item title"
             />
             <textarea
-              value={body}
-              onChange={(event) => setBody(event.target.value)}
-              placeholder="Start typing your note..."
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="Describe this HyperList item..."
             />
           </div>
         ) : (
           <div className="empty-editor">
-            <p>Create a note to get started.</p>
+            <p>Create or select a HyperList item to get started.</p>
           </div>
         )}
       </main>
