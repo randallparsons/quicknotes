@@ -274,3 +274,18 @@ textarea {
   opacity: 0.7;
   text-transform: capitalize;
 }
+
+.media-upload-form {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.media-upload-form input[type="file"] {
+  width: 100%;
+  font-size: 0.85rem;
+}
+
+.media-upload-form button {
+  width: 100%;
+}

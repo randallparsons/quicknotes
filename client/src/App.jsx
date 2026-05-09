@@ -18,6 +18,10 @@ function App() {
 
   const [mediaItems, setMediaItems] = useState([]);
   const [mediaStatus, setMediaStatus] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploadStatus, setUploadStatus] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [fileInputKey, setFileInputKey] = useState(0);
 
   const [status, setStatus] = useState('');
 
@@ -26,6 +30,10 @@ function App() {
   }, []);
 
   useEffect(() => {
+    setSelectedFile(null);
+    setUploadStatus('');
+    setFileInputKey((prevKey) => prevKey + 1);
+
     if (!selectedId) {
       setMediaItems([]);
       return;
@@ -115,6 +123,51 @@ function App() {
       console.error('Load media failed:', error);
       setMediaItems([]);
       setMediaStatus('Failed to load media.');
+    }
+  }
+
+  async function handleMediaUpload(event) {
+    event.preventDefault();
+
+    if (!selectedId) {
+      setUploadStatus('Select a HyperList item before uploading media.');
+      return;
+    }
+
+    if (!selectedFile) {
+      setUploadStatus('Choose an image, video, or audio file first.');
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      setUploadStatus('Uploading...');
+
+      const formData = new FormData();
+      formData.append('itemId', selectedId);
+      formData.append('media', selectedFile);
+
+      const response = await fetch(`${API_BASE}/media/upload`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Media upload failed');
+      }
+
+      setSelectedFile(null);
+      setFileInputKey((prevKey) => prevKey + 1);
+      setUploadStatus(`Uploaded ${data.original_name}`);
+      await loadMediaForItem(selectedId);
+    } catch (error) {
+      console.error('Media upload failed:', error);
+      setUploadStatus(error.message || 'Media upload failed.');
+    } finally {
+      setIsUploading(false);
     }
   }
 
@@ -445,6 +498,19 @@ function App() {
                 </button>
               </div>
 
+              <form className="media-upload-form" onSubmit={handleMediaUpload}>
+                <input
+                  key={fileInputKey}
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.gif,.mp4,.mov,.mp3,.wav,.ogg,.webm,image/jpeg,image/png,image/gif,video/mp4,video/quicktime,audio/mpeg,audio/wav,audio/ogg,audio/webm"
+                  onChange={(event) => setSelectedFile(event.target.files[0] || null)}
+                />
+                <button type="submit" disabled={!selectedFile || isUploading}>
+                  {isUploading ? 'Uploading...' : 'Upload Media'}
+                </button>
+              </form>
+
+              {uploadStatus && <p className="media-status">{uploadStatus}</p>}
               {mediaStatus && <p className="media-status">{mediaStatus}</p>}
 
               <div className="media-grid">
