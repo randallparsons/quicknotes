@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import './App.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+const SERVER_BASE = API_BASE.replace(/\/api\/?$/, '');
 
 function App() {
   const [authMode, setAuthMode] = useState('login');
@@ -15,11 +16,23 @@ function App() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
 
+  const [mediaItems, setMediaItems] = useState([]);
+  const [mediaStatus, setMediaStatus] = useState('');
+
   const [status, setStatus] = useState('');
 
   useEffect(() => {
     checkSession();
   }, []);
+
+  useEffect(() => {
+    if (!selectedId) {
+      setMediaItems([]);
+      return;
+    }
+
+    loadMediaForItem(selectedId);
+  }, [selectedId]);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -30,6 +43,12 @@ function App() {
 
     return () => clearTimeout(timeout);
   }, [title, description]);
+
+  function getMediaUrl(fileUrl) {
+    if (!fileUrl) return '';
+    if (fileUrl.startsWith('http')) return fileUrl;
+    return `${SERVER_BASE}${fileUrl}`;
+  }
 
   async function checkSession() {
     try {
@@ -73,6 +92,29 @@ function App() {
     } catch (error) {
       console.error('Load HyperList items failed:', error);
       setStatus('Failed to load HyperList items.');
+    }
+  }
+
+  async function loadMediaForItem(itemId) {
+    try {
+      setMediaStatus('Loading media...');
+
+      const response = await fetch(`${API_BASE}/media/item/${itemId}`, {
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load media');
+      }
+
+      setMediaItems(data);
+      setMediaStatus(data.length === 0 ? 'No media attached yet.' : '');
+    } catch (error) {
+      console.error('Load media failed:', error);
+      setMediaItems([]);
+      setMediaStatus('Failed to load media.');
     }
   }
 
@@ -128,6 +170,8 @@ function App() {
       setSelectedId(null);
       setTitle('');
       setDescription('');
+      setMediaItems([]);
+      setMediaStatus('');
       setStatus('Logged out.');
     } catch (error) {
       console.error('Logout failed:', error);
@@ -233,6 +277,7 @@ function App() {
         setSelectedId(null);
         setTitle('');
         setDescription('');
+        setMediaItems([]);
       }
 
       setStatus('HyperList item deleted.');
@@ -240,6 +285,46 @@ function App() {
       console.error('Delete HyperList item failed:', error);
       setStatus('Failed to delete HyperList item.');
     }
+  }
+
+  function renderMediaItem(media) {
+    const mediaUrl = getMediaUrl(media.file_url);
+
+    if (media.media_type === 'image') {
+      return (
+        <img
+          src={mediaUrl}
+          alt={media.original_name}
+          className="media-preview-image"
+        />
+      );
+    }
+
+    if (media.media_type === 'video') {
+      return (
+        <video
+          src={mediaUrl}
+          className="media-preview-video"
+          controls
+        />
+      );
+    }
+
+    if (media.media_type === 'audio') {
+      return (
+        <audio
+          src={mediaUrl}
+          className="media-preview-audio"
+          controls
+        />
+      );
+    }
+
+    return (
+      <a href={mediaUrl} target="_blank" rel="noreferrer">
+        Open media file
+      </a>
+    );
   }
 
   if (!user) {
@@ -336,19 +421,46 @@ function App() {
         </div>
 
         {selectedId ? (
-          <div className="editor">
-            <input
-              className="title-input"
-              type="text"
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              placeholder="Item title"
-            />
-            <textarea
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder="Describe this HyperList item..."
-            />
+          <div className="editor-layout">
+            <section className="editor">
+              <input
+                className="title-input"
+                type="text"
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder="Item title"
+              />
+              <textarea
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                placeholder="Describe this HyperList item..."
+              />
+            </section>
+
+            <aside className="media-panel">
+              <div className="media-panel-header">
+                <h3>Attached Media</h3>
+                <button onClick={() => loadMediaForItem(selectedId)}>
+                  Refresh
+                </button>
+              </div>
+
+              {mediaStatus && <p className="media-status">{mediaStatus}</p>}
+
+              <div className="media-grid">
+                {mediaItems.map((media) => (
+                  <article key={media.id} className="media-card">
+                    <div className="media-preview">
+                      {renderMediaItem(media)}
+                    </div>
+                    <div className="media-info">
+                      <strong>{media.original_name}</strong>
+                      <span>{media.media_type}</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </aside>
           </div>
         ) : (
           <div className="empty-editor">
