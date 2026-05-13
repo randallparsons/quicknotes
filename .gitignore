@@ -8,3 +8,5 @@ cookies.txt
 # Uploaded media files
 server/uploads/*
 !server/uploads/.gitkeep
+# Local backup files
+*.bak
