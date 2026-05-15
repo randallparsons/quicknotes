@@ -458,6 +458,39 @@ async function submitComment(itemId) {
     }
   }
 
+  async function deleteMedia(mediaId) {
+    if (!selectedId) return;
+
+    const confirmed = window.confirm('Delete this media attachment?');
+
+    if (!confirmed) return;
+
+    try {
+      setUploadStatus('Deleting media...');
+
+      const response = await fetch(`${API_BASE}/media/${mediaId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete media');
+      }
+
+      setMediaItems((prevItems) =>
+        prevItems.filter((media) => media.id !== mediaId)
+      );
+
+      setUploadStatus('Media deleted.');
+      await loadMediaForItem(selectedId);
+    } catch (error) {
+      console.error('Delete media failed:', error);
+      setUploadStatus(error.message || 'Failed to delete media.');
+    }
+  }
+
   async function handleAuth(event) {
     event.preventDefault();
     setStatus('');
@@ -1012,10 +1045,19 @@ async function submitComment(itemId) {
                     <div className="media-preview">
                       {renderMediaItem(media)}
                     </div>
+                    
                     <div className="media-info">
                       <strong>{media.original_name}</strong>
                       <span>{media.media_type}</span>
                     </div>
+
+                    <button
+                      type="button"
+                      className="media-delete-button"
+                      onClick={() => deleteMedia(media.id)}
+                    >
+                      Delete Media
+                    </button>
                   </article>
                 ))}
               </div>
