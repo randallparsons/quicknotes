@@ -25,11 +25,24 @@ function App() {
   const [isUploading, setIsUploading] = useState(false);
   const [fileInputKey, setFileInputKey] = useState(0);
 
+  const [socialUsers, setSocialUsers] = useState([]);
+  const [followingUsers, setFollowingUsers] = useState([]);
+  const [feedItems, setFeedItems] = useState([]);
+  const [feedComments, setFeedComments] = useState({});
+  const [commentDrafts, setCommentDrafts] = useState({});
+  const [socialStatus, setSocialStatus] = useState('');
+
   const [status, setStatus] = useState('');
 
   useEffect(() => {
     checkSession();
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    loadSocialData();
+  }, [user]);
 
   useEffect(() => {
     setSelectedFile(null);
@@ -62,6 +75,217 @@ function App() {
     if (fileUrl.startsWith('http')) return fileUrl;
     return `${SERVER_BASE}${fileUrl}`;
   }
+
+  async function loadSocialData() {
+    try {
+      setSocialStatus('Loading social features...');
+
+      await Promise.all([
+        loadSocialUsers(),
+        loadFollowingUsers(),
+        loadFeedItems()
+      ]);
+
+      setSocialStatus('');
+    } catch (error) {
+      console.error('Load social data failed:', error);
+      setSocialStatus('Failed to load social features.');
+    }
+  }
+
+  async function loadSocialUsers() {
+    const response = await fetch(`${API_BASE}/social/users`, {
+      credentials: 'include'
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to load users');
+    }
+
+    setSocialUsers(data);
+  }
+
+  async function loadFollowingUsers() {
+    const response = await fetch(`${API_BASE}/social/following`, {
+      credentials: 'include'
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to load following list');
+    }
+
+    setFollowingUsers(data);
+  }
+
+async function loadFeedItems() {
+  const response = await fetch(`${API_BASE}/feed`, {
+    credentials: 'include'
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Failed to load feed');
+  }
+
+  const itemsWithLikeState = await Promise.all(
+    data.map(async (feedItem) => {
+      try {
+        const likeResponse = await fetch(`${API_BASE}/items/${feedItem.id}/likes`, {
+          credentials: 'include'
+        });
+
+        const likeData = await likeResponse.json();
+
+        if (!likeResponse.ok) {
+          throw new Error(likeData.error || 'Failed to load like state');
+        }
+
+        return {
+          ...feedItem,
+          like_count: likeData.like_count,
+          liked_by_current_user: likeData.liked_by_current_user
+        };
+      } catch (error) {
+        console.error('Load like state failed:', error);
+        return feedItem;
+      }
+    })
+  );
+
+  setFeedItems(itemsWithLikeState);
+}
+
+  async function toggleFollow(targetUser) {
+    try {
+      const isFollowing = Boolean(targetUser.is_following);
+
+      const response = await fetch(`${API_BASE}/social/follow/${targetUser.id}`, {
+        method: isFollowing ? 'DELETE' : 'POST',
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Follow action failed');
+      }
+
+      await loadSocialData();
+      setStatus(isFollowing ? 'User unfollowed.' : 'User followed.');
+    } catch (error) {
+      console.error('Follow toggle failed:', error);
+      setStatus('Follow action failed.');
+    }
+  }
+
+  async function toggleLike(feedItem) {
+  try {
+    const isLiked = Boolean(feedItem.liked_by_current_user);
+
+    const response = await fetch(`${API_BASE}/items/${feedItem.id}/like`, {
+      method: isLiked ? 'DELETE' : 'POST',
+      credentials: 'include'
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Like action failed');
+    }
+
+    setFeedItems((prevItems) =>
+      prevItems.map((item) =>
+        item.id === feedItem.id
+          ? {
+              ...item,
+              like_count: data.like_count,
+              liked_by_current_user: data.liked_by_current_user
+            }
+          : item
+      )
+    );
+
+    setStatus(isLiked ? 'Like removed.' : 'Item liked.');
+  } catch (error) {
+    console.error('Like toggle failed:', error);
+    setStatus('Like action failed.');
+  }
+}
+
+async function loadCommentsForItem(itemId) {
+  try {
+    const response = await fetch(`${API_BASE}/items/${itemId}/comments`, {
+      credentials: 'include'
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to load comments');
+    }
+
+    setFeedComments((prevComments) => ({
+      ...prevComments,
+      [itemId]: data
+    }));
+  } catch (error) {
+    console.error('Load comments failed:', error);
+    setStatus('Failed to load comments.');
+  }
+}
+
+function updateCommentDraft(itemId, value) {
+  setCommentDrafts((prevDrafts) => ({
+    ...prevDrafts,
+    [itemId]: value
+  }));
+}
+
+async function submitComment(itemId) {
+  const commentText = commentDrafts[itemId] || '';
+
+  if (!commentText.trim()) {
+    setStatus('Please enter a comment first.');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/items/${itemId}/comments`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        comment_text: commentText
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to add comment');
+    }
+
+    setCommentDrafts((prevDrafts) => ({
+      ...prevDrafts,
+      [itemId]: ''
+    }));
+
+    await loadCommentsForItem(itemId);
+    await loadFeedItems();
+
+    setStatus('Comment added.');
+  } catch (error) {
+    console.error('Submit comment failed:', error);
+    setStatus('Failed to add comment.');
+  }
+}
 
   async function checkSession() {
     try {
@@ -234,6 +458,39 @@ function App() {
     }
   }
 
+  async function deleteMedia(mediaId) {
+    if (!selectedId) return;
+
+    const confirmed = window.confirm('Delete this media attachment?');
+
+    if (!confirmed) return;
+
+    try {
+      setUploadStatus('Deleting media...');
+
+      const response = await fetch(`${API_BASE}/media/${mediaId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete media');
+      }
+
+      setMediaItems((prevItems) =>
+        prevItems.filter((media) => media.id !== mediaId)
+      );
+
+      setUploadStatus('Media deleted.');
+      await loadMediaForItem(selectedId);
+    } catch (error) {
+      console.error('Delete media failed:', error);
+      setUploadStatus(error.message || 'Failed to delete media.');
+    }
+  }
+
   async function handleAuth(event) {
     event.preventDefault();
     setStatus('');
@@ -290,6 +547,12 @@ function App() {
       setMediaStatus('');
       setChildItems([]);
       setChildStatus('');
+      setSocialUsers([]);
+      setFollowingUsers([]);
+      setFeedItems([]);
+      setFeedComments({});
+      setCommentDrafts({});
+      setSocialStatus('');
       setStatus('Logged out.');
     } catch (error) {
       console.error('Logout failed:', error);
@@ -482,6 +745,134 @@ function App() {
     );
   }
 
+  function renderSocialPanel() {
+    const availableUsers = socialUsers.filter((socialUser) => socialUser.id !== user.id);
+
+    return (
+      <section className="social-panel">
+        <div className="media-panel-header">
+          <h3>Social</h3>
+          <button type="button" onClick={loadSocialData}>
+            Refresh
+          </button>
+        </div>
+
+        {socialStatus && <p className="media-status">{socialStatus}</p>}
+
+        <section className="social-section">
+          <h4>Users</h4>
+
+          {availableUsers.length === 0 ? (
+            <p className="media-status">No other users found.</p>
+          ) : (
+            <div className="social-user-list">
+              {availableUsers.map((socialUser) => (
+                <div key={socialUser.id} className="social-user-row">
+                  <span>{socialUser.email}</span>
+                  <button
+                    type="button"
+                    onClick={() => toggleFollow(socialUser)}
+                  >
+                    {socialUser.is_following ? 'Unfollow' : 'Follow'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="social-section">
+          <h4>Following</h4>
+
+          {followingUsers.length === 0 ? (
+            <p className="media-status">You are not following anyone yet.</p>
+          ) : (
+            <div className="following-list">
+              {followingUsers.map((followedUser) => (
+                <div key={followedUser.id} className="following-card">
+                  <strong>{followedUser.email}</strong>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="social-section">
+          <h4>Followed Item Feed</h4>
+
+          {feedItems.length === 0 ? (
+            <p className="media-status">
+              Follow another user to see their HyperList items here.
+            </p>
+          ) : (
+            <div className="feed-list">
+              {feedItems.map((feedItem) => (
+                <article key={feedItem.id} className="feed-card">
+                  <div className="feed-card-header">
+                    <strong>{feedItem.title || 'Untitled Item'}</strong>
+                    <span>{feedItem.owner_email}</span>
+                  </div>
+
+                  <p>
+                    {feedItem.description
+                      ? feedItem.description
+                      : 'No description yet.'}
+                  </p>
+
+                  <div className="feed-meta">
+                    <span>Likes: {feedItem.like_count || 0}</span>
+                    <span>Comments: {feedItem.comment_count || 0}</span>
+                  </div>
+
+                  <div className="feed-actions">
+                    <button type="button" onClick={() => toggleLike(feedItem)}>
+                      {feedItem.liked_by_current_user ? 'Unlike' : 'Like'}
+                    </button>
+
+                    <button type="button" onClick={() => loadCommentsForItem(feedItem.id)}>
+                      View Comments
+                    </button>
+                  </div>
+
+                  <form
+                    className="comment-form"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      submitComment(feedItem.id);
+                    }}
+                  >
+                    <input
+                      type="text"
+                      value={commentDrafts[feedItem.id] || ''}
+                      onChange={(event) => updateCommentDraft(feedItem.id, event.target.value)}
+                      placeholder="Add a comment..."
+                    />
+                    <button type="submit">Comment</button>
+                  </form>
+
+                  {feedComments[feedItem.id] && (
+                    <div className="comment-list">
+                      {feedComments[feedItem.id].length === 0 ? (
+                        <p className="media-status">No comments yet.</p>
+                      ) : (
+                        feedComments[feedItem.id].map((comment) => (
+                          <div key={comment.id} className="comment-card">
+                            <strong>{comment.email}</strong>
+                            <p>{comment.comment_text}</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      </section>
+    );
+  }
+
   if (!user) {
     return (
       <div className="auth-page">
@@ -654,13 +1045,25 @@ function App() {
                     <div className="media-preview">
                       {renderMediaItem(media)}
                     </div>
+                    
                     <div className="media-info">
                       <strong>{media.original_name}</strong>
                       <span>{media.media_type}</span>
                     </div>
+
+                    <button
+                      type="button"
+                      className="media-delete-button"
+                      onClick={() => deleteMedia(media.id)}
+                    >
+                      Delete Media
+                    </button>
                   </article>
                 ))}
               </div>
+              <div className="panel-divider" />
+
+              {renderSocialPanel()}
             </aside>
           </div>
         ) : (

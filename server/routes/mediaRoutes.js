@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const fsPromises = require('fs/promises');
 const crypto = require('crypto');
 
 const db = require('../db/db');
@@ -163,6 +164,63 @@ router.get('/item/:itemId', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Get item media error:', error);
     res.status(500).json({ error: 'Failed to fetch media.' });
+  }
+});
+
+router.delete('/:mediaId', requireAuth, async (req, res) => {
+  try {
+    const { mediaId } = req.params;
+
+    const [mediaRows] = await db.query(
+      `SELECT 
+         im.id,
+         im.item_id,
+         im.user_id,
+         im.stored_name,
+         im.file_url
+       FROM item_media im
+       INNER JOIN hyper_items hi ON im.item_id = hi.id
+       WHERE im.id = ?
+         AND im.user_id = ?
+         AND hi.user_id = ?`,
+      [mediaId, req.session.userId, req.session.userId]
+    );
+
+    if (mediaRows.length === 0) {
+      return res.status(404).json({ error: 'Media not found' });
+    }
+
+    const media = mediaRows[0];
+
+    const uploadPath = path.join(
+      __dirname,
+      '..',
+      'uploads',
+      path.basename(media.stored_name)
+    );
+
+    try {
+      await fsPromises.unlink(uploadPath);
+    } catch (fileError) {
+      if (fileError.code !== 'ENOENT') {
+        console.error('Delete media file error:', fileError);
+        return res.status(500).json({ error: 'Failed to delete media file' });
+      }
+    }
+
+    await db.query(
+      'DELETE FROM item_media WHERE id = ? AND user_id = ?',
+      [mediaId, req.session.userId]
+    );
+
+    res.json({
+      message: 'Media deleted successfully',
+      mediaId: Number(mediaId),
+      itemId: media.item_id
+    });
+  } catch (error) {
+    console.error('Delete media error:', error);
+    res.status(500).json({ error: 'Failed to delete media' });
   }
 });
 
