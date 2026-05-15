@@ -25,11 +25,22 @@ function App() {
   const [isUploading, setIsUploading] = useState(false);
   const [fileInputKey, setFileInputKey] = useState(0);
 
+  const [socialUsers, setSocialUsers] = useState([]);
+  const [followingUsers, setFollowingUsers] = useState([]);
+  const [feedItems, setFeedItems] = useState([]);
+  const [socialStatus, setSocialStatus] = useState('');
+
   const [status, setStatus] = useState('');
 
   useEffect(() => {
     checkSession();
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    loadSocialData();
+  }, [user]);
 
   useEffect(() => {
     setSelectedFile(null);
@@ -61,6 +72,88 @@ function App() {
     if (!fileUrl) return '';
     if (fileUrl.startsWith('http')) return fileUrl;
     return `${SERVER_BASE}${fileUrl}`;
+  }
+
+  async function loadSocialData() {
+    try {
+      setSocialStatus('Loading social features...');
+
+      await Promise.all([
+        loadSocialUsers(),
+        loadFollowingUsers(),
+        loadFeedItems()
+      ]);
+
+      setSocialStatus('');
+    } catch (error) {
+      console.error('Load social data failed:', error);
+      setSocialStatus('Failed to load social features.');
+    }
+  }
+
+  async function loadSocialUsers() {
+    const response = await fetch(`${API_BASE}/social/users`, {
+      credentials: 'include'
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to load users');
+    }
+
+    setSocialUsers(data);
+  }
+
+  async function loadFollowingUsers() {
+    const response = await fetch(`${API_BASE}/social/following`, {
+      credentials: 'include'
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to load following list');
+    }
+
+    setFollowingUsers(data);
+  }
+
+  async function loadFeedItems() {
+    const response = await fetch(`${API_BASE}/feed`, {
+      credentials: 'include'
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to load feed');
+    }
+
+    setFeedItems(data);
+  }
+
+  async function toggleFollow(targetUser) {
+    try {
+      const isFollowing = Boolean(targetUser.is_following);
+
+      const response = await fetch(`${API_BASE}/social/follow/${targetUser.id}`, {
+        method: isFollowing ? 'DELETE' : 'POST',
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Follow action failed');
+      }
+
+      await loadSocialData();
+      setStatus(isFollowing ? 'User unfollowed.' : 'User followed.');
+    } catch (error) {
+      console.error('Follow toggle failed:', error);
+      setStatus('Follow action failed.');
+    }
   }
 
   async function checkSession() {
@@ -290,6 +383,10 @@ function App() {
       setMediaStatus('');
       setChildItems([]);
       setChildStatus('');
+      setSocialUsers([]);
+      setFollowingUsers([]);
+      setFeedItems([]);
+      setSocialStatus('');
       setStatus('Logged out.');
     } catch (error) {
       console.error('Logout failed:', error);
