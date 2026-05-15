@@ -9,6 +9,7 @@ const authRoutes = require('./routes/authRoutes');
 const noteRoutes = require('./routes/noteRoutes');
 const mediaRoutes = require('./routes/mediaRoutes');
 const itemRoutes = require('./routes/itemRoutes');
+const socialRoutes = require('./routes/socialRoutes');
 
 const app = express();
 
@@ -46,6 +47,7 @@ app.use('/api', authRoutes);
 app.use('/api', noteRoutes);
 app.use('/api', itemRoutes);
 app.use('/api/media', mediaRoutes);
+app.use('/api', socialRoutes);
 
 app.get('/api/test', async (req, res) => {
   try {
