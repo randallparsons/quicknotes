@@ -579,6 +579,93 @@ function App() {
     );
   }
 
+  function renderSocialPanel() {
+    const availableUsers = socialUsers.filter((socialUser) => socialUser.id !== user.id);
+
+    return (
+      <section className="social-panel">
+        <div className="media-panel-header">
+          <h3>Social</h3>
+          <button type="button" onClick={loadSocialData}>
+            Refresh
+          </button>
+        </div>
+
+        {socialStatus && <p className="media-status">{socialStatus}</p>}
+
+        <section className="social-section">
+          <h4>Users</h4>
+
+          {availableUsers.length === 0 ? (
+            <p className="media-status">No other users found.</p>
+          ) : (
+            <div className="social-user-list">
+              {availableUsers.map((socialUser) => (
+                <div key={socialUser.id} className="social-user-row">
+                  <span>{socialUser.email}</span>
+                  <button
+                    type="button"
+                    onClick={() => toggleFollow(socialUser)}
+                  >
+                    {socialUser.is_following ? 'Unfollow' : 'Follow'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="social-section">
+          <h4>Following</h4>
+
+          {followingUsers.length === 0 ? (
+            <p className="media-status">You are not following anyone yet.</p>
+          ) : (
+            <div className="following-list">
+              {followingUsers.map((followedUser) => (
+                <div key={followedUser.id} className="following-card">
+                  <strong>{followedUser.email}</strong>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="social-section">
+          <h4>Followed Item Feed</h4>
+
+          {feedItems.length === 0 ? (
+            <p className="media-status">
+              Follow another user to see their HyperList items here.
+            </p>
+          ) : (
+            <div className="feed-list">
+              {feedItems.map((feedItem) => (
+                <article key={feedItem.id} className="feed-card">
+                  <div className="feed-card-header">
+                    <strong>{feedItem.title || 'Untitled Item'}</strong>
+                    <span>{feedItem.owner_email}</span>
+                  </div>
+
+                  <p>
+                    {feedItem.description
+                      ? feedItem.description
+                      : 'No description yet...'}
+                  </p>
+
+                  <div className="feed-meta">
+                    <span>Likes: {feedItem.like_count || 0}</span>
+                    <span>Comments: {feedItem.comment_count || 0}</span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      </section>
+    );
+  }
+
   if (!user) {
     return (
       <div className="auth-page">
@@ -758,6 +845,9 @@ function App() {
                   </article>
                 ))}
               </div>
+              <div className="panel-divider" />
+
+              {renderSocialPanel()}
             </aside>
           </div>
         ) : (

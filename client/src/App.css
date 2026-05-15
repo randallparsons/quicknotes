@@ -327,3 +327,90 @@ textarea {
   margin: 1rem 0;
   background: rgba(255, 255, 255, 0.1);
 }
+
+.social-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.social-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.social-section h4 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.social-user-list,
+.following-list,
+.feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.social-user-row,
+.following-card,
+.feed-card {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.social-user-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.social-user-row span,
+.following-card strong,
+.feed-card strong {
+  overflow-wrap: anywhere;
+}
+
+.social-user-row button,
+.social-panel button {
+  border: none;
+  border-radius: 10px;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+  background: #222;
+  color: white;
+}
+
+.feed-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.feed-card-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.feed-card-header span {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+.feed-card p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.feed-meta {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
