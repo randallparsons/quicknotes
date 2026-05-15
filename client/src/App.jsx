@@ -28,6 +28,8 @@ function App() {
   const [socialUsers, setSocialUsers] = useState([]);
   const [followingUsers, setFollowingUsers] = useState([]);
   const [feedItems, setFeedItems] = useState([]);
+  const [feedComments, setFeedComments] = useState({});
+  const [commentDrafts, setCommentDrafts] = useState({});
   const [socialStatus, setSocialStatus] = useState('');
 
   const [status, setStatus] = useState('');
@@ -119,19 +121,44 @@ function App() {
     setFollowingUsers(data);
   }
 
-  async function loadFeedItems() {
-    const response = await fetch(`${API_BASE}/feed`, {
-      credentials: 'include'
-    });
+async function loadFeedItems() {
+  const response = await fetch(`${API_BASE}/feed`, {
+    credentials: 'include'
+  });
 
-    const data = await response.json();
+  const data = await response.json();
 
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to load feed');
-    }
-
-    setFeedItems(data);
+  if (!response.ok) {
+    throw new Error(data.error || 'Failed to load feed');
   }
+
+  const itemsWithLikeState = await Promise.all(
+    data.map(async (feedItem) => {
+      try {
+        const likeResponse = await fetch(`${API_BASE}/items/${feedItem.id}/likes`, {
+          credentials: 'include'
+        });
+
+        const likeData = await likeResponse.json();
+
+        if (!likeResponse.ok) {
+          throw new Error(likeData.error || 'Failed to load like state');
+        }
+
+        return {
+          ...feedItem,
+          like_count: likeData.like_count,
+          liked_by_current_user: likeData.liked_by_current_user
+        };
+      } catch (error) {
+        console.error('Load like state failed:', error);
+        return feedItem;
+      }
+    })
+  );
+
+  setFeedItems(itemsWithLikeState);
+}
 
   async function toggleFollow(targetUser) {
     try {
@@ -155,6 +182,110 @@ function App() {
       setStatus('Follow action failed.');
     }
   }
+
+  async function toggleLike(feedItem) {
+  try {
+    const isLiked = Boolean(feedItem.liked_by_current_user);
+
+    const response = await fetch(`${API_BASE}/items/${feedItem.id}/like`, {
+      method: isLiked ? 'DELETE' : 'POST',
+      credentials: 'include'
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Like action failed');
+    }
+
+    setFeedItems((prevItems) =>
+      prevItems.map((item) =>
+        item.id === feedItem.id
+          ? {
+              ...item,
+              like_count: data.like_count,
+              liked_by_current_user: data.liked_by_current_user
+            }
+          : item
+      )
+    );
+
+    setStatus(isLiked ? 'Like removed.' : 'Item liked.');
+  } catch (error) {
+    console.error('Like toggle failed:', error);
+    setStatus('Like action failed.');
+  }
+}
+
+async function loadCommentsForItem(itemId) {
+  try {
+    const response = await fetch(`${API_BASE}/items/${itemId}/comments`, {
+      credentials: 'include'
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to load comments');
+    }
+
+    setFeedComments((prevComments) => ({
+      ...prevComments,
+      [itemId]: data
+    }));
+  } catch (error) {
+    console.error('Load comments failed:', error);
+    setStatus('Failed to load comments.');
+  }
+}
+
+function updateCommentDraft(itemId, value) {
+  setCommentDrafts((prevDrafts) => ({
+    ...prevDrafts,
+    [itemId]: value
+  }));
+}
+
+async function submitComment(itemId) {
+  const commentText = commentDrafts[itemId] || '';
+
+  if (!commentText.trim()) {
+    setStatus('Please enter a comment first.');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/items/${itemId}/comments`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        comment_text: commentText
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to add comment');
+    }
+
+    setCommentDrafts((prevDrafts) => ({
+      ...prevDrafts,
+      [itemId]: ''
+    }));
+
+    await loadCommentsForItem(itemId);
+    await loadFeedItems();
+
+    setStatus('Comment added.');
+  } catch (error) {
+    console.error('Submit comment failed:', error);
+    setStatus('Failed to add comment.');
+  }
+}
 
   async function checkSession() {
     try {
@@ -386,6 +517,8 @@ function App() {
       setSocialUsers([]);
       setFollowingUsers([]);
       setFeedItems([]);
+      setFeedComments({});
+      setCommentDrafts({});
       setSocialStatus('');
       setStatus('Logged out.');
     } catch (error) {
@@ -650,13 +783,54 @@ function App() {
                   <p>
                     {feedItem.description
                       ? feedItem.description
-                      : 'No description yet...'}
+                      : 'No description yet.'}
                   </p>
 
                   <div className="feed-meta">
                     <span>Likes: {feedItem.like_count || 0}</span>
                     <span>Comments: {feedItem.comment_count || 0}</span>
                   </div>
+
+                  <div className="feed-actions">
+                    <button type="button" onClick={() => toggleLike(feedItem)}>
+                      {feedItem.liked_by_current_user ? 'Unlike' : 'Like'}
+                    </button>
+
+                    <button type="button" onClick={() => loadCommentsForItem(feedItem.id)}>
+                      View Comments
+                    </button>
+                  </div>
+
+                  <form
+                    className="comment-form"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      submitComment(feedItem.id);
+                    }}
+                  >
+                    <input
+                      type="text"
+                      value={commentDrafts[feedItem.id] || ''}
+                      onChange={(event) => updateCommentDraft(feedItem.id, event.target.value)}
+                      placeholder="Add a comment..."
+                    />
+                    <button type="submit">Comment</button>
+                  </form>
+
+                  {feedComments[feedItem.id] && (
+                    <div className="comment-list">
+                      {feedComments[feedItem.id].length === 0 ? (
+                        <p className="media-status">No comments yet.</p>
+                      ) : (
+                        feedComments[feedItem.id].map((comment) => (
+                          <div key={comment.id} className="comment-card">
+                            <strong>{comment.email}</strong>
+                            <p>{comment.comment_text}</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </article>
               ))}
             </div>
