@@ -13,6 +13,11 @@ function App() {
   const [items, setItems] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
 
+  // Week 7 navigation state
+  const [currentItem, setCurrentItem] = useState(null);
+  const [viewingItem, setViewingItem] = useState(null);
+  const [breadcrumbPath, setBreadcrumbPath] = useState([]);
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
 
@@ -318,11 +323,12 @@ async function submitComment(itemId) {
 
       if (data.length > 0) {
         const firstItem = data[0];
-        setSelectedId(firstItem.id);
-        setTitle(firstItem.title);
-        setDescription(firstItem.description || '');
+        selectItem(firstItem);
       } else {
         setSelectedId(null);
+        setCurrentItem(null);
+        setViewingItem(null);
+        setBreadcrumbPath([]);
         setTitle('');
         setDescription('');
       }
@@ -541,6 +547,9 @@ async function submitComment(itemId) {
       setUser(null);
       setItems([]);
       setSelectedId(null);
+      setCurrentItem(null);
+      setViewingItem(null);
+      setBreadcrumbPath([]);
       setTitle('');
       setDescription('');
       setMediaItems([]);
@@ -562,8 +571,76 @@ async function submitComment(itemId) {
 
   function selectItem(item) {
     setSelectedId(item.id);
+
+    // The current item is the user's active working location.
+    setCurrentItem(item);
+
+    // Selecting/entering an item clears any temporary preview.
+    setViewingItem(null);
+
+    // Build the breadcrumb path from Root to the current item.
+    loadBreadcrumbPath(item);
+
     setTitle(item.title);
     setDescription(item.description || '');
+  }
+
+  async function loadBreadcrumbPath(item) {
+    if (!item) {
+      setBreadcrumbPath([]);
+      return;
+    }
+
+    try {
+      const path = [
+        {
+          id: item.id,
+          title: item.title || 'Untitled Item'
+        }
+      ];
+
+      let parentId = item.parent_id;
+
+      while (parentId) {
+        const response = await fetch(`${API_BASE}/items/${parentId}`, {
+          credentials: 'include'
+        });
+
+        const parentItem = await response.json();
+
+        if (!response.ok) {
+          throw new Error(parentItem.error || 'Failed to load breadcrumb parent');
+        }
+
+        path.unshift({
+          id: parentItem.id,
+          title: parentItem.title || 'Untitled Item'
+        });
+
+        parentId = parentItem.parent_id;
+      }
+
+      setBreadcrumbPath([
+        {
+          id: null,
+          title: 'Root'
+        },
+        ...path
+      ]);
+    } catch (error) {
+      console.error('Load breadcrumb path failed:', error);
+
+      setBreadcrumbPath([
+        {
+          id: null,
+          title: 'Root'
+        },
+        {
+          id: item.id,
+          title: item.title || 'Untitled Item'
+        }
+      ]);
+    }
   }
 
   async function goUpOneLevel() {
@@ -626,9 +703,7 @@ async function submitComment(itemId) {
 
       const updatedItems = [newItem, ...items];
       setItems(updatedItems);
-      setSelectedId(newItem.id);
-      setTitle(newItem.title);
-      setDescription(newItem.description || '');
+      selectItem(newItem);
       setStatus('New HyperList item created.');
     } catch (error) {
       console.error('Create HyperList item failed:', error);
@@ -688,11 +763,12 @@ async function submitComment(itemId) {
 
       if (updatedItems.length > 0) {
         const nextItem = updatedItems[0];
-        setSelectedId(nextItem.id);
-        setTitle(nextItem.title);
-        setDescription(nextItem.description || '');
+        selectItem(nextItem);
       } else {
         setSelectedId(null);
+        setCurrentItem(null);
+        setViewingItem(null);
+        setBreadcrumbPath([]);
         setTitle('');
         setDescription('');
         setMediaItems([]);
@@ -742,6 +818,32 @@ async function submitComment(itemId) {
       <a href={mediaUrl} target="_blank" rel="noreferrer">
         Open media file
       </a>
+    );
+  }
+
+  function renderBreadcrumbs() {
+    if (breadcrumbPath.length === 0) {
+      return null;
+    }
+
+    return (
+      <nav className="breadcrumb-bar" aria-label="Breadcrumb navigation">
+        {breadcrumbPath.map((crumb, index) => (
+          <span key={`${crumb.id ?? 'root'}-${index}`} className="breadcrumb-segment">
+            <button
+              type="button"
+              className="breadcrumb-button"
+              disabled={index === breadcrumbPath.length - 1}
+            >
+              {crumb.title}
+            </button>
+
+            {index < breadcrumbPath.length - 1 && (
+              <span className="breadcrumb-separator">&gt;</span>
+            )}
+          </span>
+        ))}
+      </nav>
     );
   }
 
@@ -968,6 +1070,8 @@ async function submitComment(itemId) {
             <button onClick={handleLogout}>Logout</button>
           </div>
         </div>
+
+        {renderBreadcrumbs()}
 
         {selectedId ? (
           <div className="editor-layout">
