@@ -17,6 +17,9 @@ function App() {
   const [currentItem, setCurrentItem] = useState(null);
   const [viewingItem, setViewingItem] = useState(null);
   const [breadcrumbPath, setBreadcrumbPath] = useState([]);
+  const [parentItem, setParentItem] = useState(null);
+  const [siblingItems, setSiblingItems] = useState([]);
+  const [siblingStatus, setSiblingStatus] = useState('');
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -338,6 +341,65 @@ async function submitComment(itemId) {
     }
   }
 
+  async function loadParentSiblingItems(item) {
+    if (!item) {
+      setParentItem(null);
+      setSiblingItems([]);
+      setSiblingStatus('');
+      return;
+    }
+
+    try {
+      setSiblingStatus('Loading parent/sibling items...');
+
+      if (!item.parent_id) {
+        const rootResponse = await fetch(`${API_BASE}/items`, {
+          credentials: 'include'
+        });
+
+        const rootData = await rootResponse.json();
+
+        if (!rootResponse.ok) {
+          throw new Error(rootData.error || 'Failed to load root items');
+        }
+
+        setParentItem(null);
+        setSiblingItems(rootData);
+        setSiblingStatus(rootData.length === 0 ? 'No root items yet.' : '');
+        return;
+      }
+
+      const parentResponse = await fetch(`${API_BASE}/items/${item.parent_id}`, {
+        credentials: 'include'
+      });
+
+      const parentData = await parentResponse.json();
+
+      if (!parentResponse.ok) {
+        throw new Error(parentData.error || 'Failed to load parent item');
+      }
+
+      const siblingResponse = await fetch(`${API_BASE}/items?parentId=${item.parent_id}`, {
+        credentials: 'include'
+      });
+
+      const siblingData = await siblingResponse.json();
+
+      if (!siblingResponse.ok) {
+        throw new Error(siblingData.error || 'Failed to load sibling items');
+      }
+
+      setParentItem(parentData);
+      setSiblingItems(siblingData);
+      setSiblingStatus(siblingData.length === 0 ? 'No sibling items found.' : '');
+    } catch (error) {
+      console.error('Load parent/sibling items failed:', error);
+      setParentItem(null);
+      setSiblingItems([]);
+      setSiblingStatus('Failed to load parent/sibling items.');
+    }
+  }  
+
   async function loadChildItems(parentId) {
     try {
       setChildStatus('Loading child items...');
@@ -554,6 +616,9 @@ async function submitComment(itemId) {
       setDescription('');
       setMediaItems([]);
       setMediaStatus('');
+      setParentItem(null);
+      setSiblingItems([]);
+      setSiblingStatus('');
       setChildItems([]);
       setChildStatus('');
       setSocialUsers([]);
@@ -580,6 +645,9 @@ async function submitComment(itemId) {
 
     // Build the breadcrumb path from Root to the current item.
     loadBreadcrumbPath(item);
+
+    // Load the left-side Parent Context / sibling list.
+    loadParentSiblingItems(item);
 
     setTitle(item.title);
     setDescription(item.description || '');
@@ -1089,28 +1157,70 @@ async function submitComment(itemId) {
           <button onClick={createItem}>New Root Item</button>
         </div>
 
-        <div className="notes-list">
-          {items.length === 0 ? (
-            <p className="empty-message">No HyperList items yet.</p>
-          ) : (
-            items.map((item) => (
+        <div className="parent-sibling-frame">
+          {parentItem ? (
+            <section className="parent-context-section">
+              <h3>Parent Context</h3>
+
               <button
-                key={item.id}
-                className={`note-item ${selectedId === item.id ? 'selected' : ''} ${
-                  viewingItem?.id === item.id ? 'viewing' : ''
+                type="button"
+                className={`parent-context-card ${
+                  viewingItem?.id === parentItem.id ? 'viewing' : ''
                 }`}
-                onClick={() => previewItem(item)}
-                onDoubleClick={() => selectItem(item)}
+                onClick={() => previewItem(parentItem)}
+                onDoubleClick={() => selectItem(parentItem)}
+                title={parentItem.title || 'Untitled Parent Item'}
               >
-                <strong>{item.title || 'Untitled Item'}</strong>
+                <strong>{parentItem.title || 'Untitled Parent Item'}</strong>
                 <span>
-                  {item.description
-                    ? item.description.slice(0, 40)
+                  {parentItem.description
+                    ? parentItem.description.slice(0, 60)
                     : 'No description yet...'}
                 </span>
               </button>
-            ))
+            </section>
+          ) : (
+            <section className="parent-context-section">
+              <h3>Root Context</h3>
+              <div className="root-context-card">
+                <strong>HyperList Root</strong>
+                <span>You are viewing top-level items.</span>
+              </div>
+            </section>
           )}
+
+          <section className="sibling-section">
+            <h3>{parentItem ? 'Sibling Items' : 'Root Items'}</h3>
+
+            {siblingStatus && <p className="empty-message">{siblingStatus}</p>}
+
+            <div className="notes-list">
+              {siblingItems.length === 0 ? (
+                <p className="empty-message">
+                  {parentItem ? 'No sibling items found.' : 'No root items yet.'}
+                </p>
+              ) : (
+                siblingItems.map((item) => (
+                  <button
+                    key={item.id}
+                    className={`note-item ${selectedId === item.id ? 'selected' : ''} ${
+                      viewingItem?.id === item.id ? 'viewing' : ''
+                    }`}
+                    onClick={() => previewItem(item)}
+                    onDoubleClick={() => selectItem(item)}
+                    title={item.title || 'Untitled Item'}
+                  >
+                    <strong>{item.title || 'Untitled Item'}</strong>
+                    <span>
+                      {item.description
+                        ? item.description.slice(0, 40)
+                        : 'No description yet...'}
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          </section>
         </div>
       </aside>
 
