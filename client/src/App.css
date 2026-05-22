@@ -503,3 +503,22 @@ textarea {
   border-color: rgba(180, 255, 160, 0.95);
   background: rgba(180, 255, 160, 0.16);
 }
+
+.current-mode {
+  outline: 2px solid rgba(180, 255, 160, 0.28);
+}
+
+.current-item-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.6rem;
+  background: rgba(180, 255, 160, 0.12);
+  border: 1px solid rgba(180, 255, 160, 0.28);
+  color: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+}

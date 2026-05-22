@@ -1137,7 +1137,7 @@ async function submitComment(itemId) {
         {selectedId ? (
           <div className="editor-layout">
             <section
-              className={`editor ${isViewingMode ? 'viewing-mode' : ''}`}
+              className={`editor ${isViewingMode ? 'viewing-mode' : 'current-mode'}`}
               onDoubleClick={isViewingMode ? returnToCurrentItem : undefined}
             >
               {isViewingMode && (
@@ -1154,6 +1154,14 @@ async function submitComment(itemId) {
                   >
                     Return to Current Item
                   </button>
+                </div>
+              )}
+
+              {!isViewingMode && currentItem && (
+                <div className="current-item-banner">
+                  <span>
+                    Current Item: {currentItem.title || 'Untitled Item'} — editing enabled
+                  </span>
                 </div>
               )}
 
