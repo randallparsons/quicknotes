@@ -680,6 +680,31 @@ async function submitComment(itemId) {
     }
   }
 
+  async function navigateToBreadcrumb(crumb) {
+    if (!crumb.id) {
+      setStatus('Root breadcrumb selected.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/items/${crumb.id}`, {
+        credentials: 'include'
+      });
+
+      const item = await response.json();
+
+      if (!response.ok) {
+        throw new Error(item.error || 'Failed to load breadcrumb item');
+      }
+
+      selectItem(item);
+      setStatus(`Moved to ${item.title || 'Untitled Item'}.`);
+    } catch (error) {
+      console.error('Breadcrumb navigation failed:', error);
+      setStatus('Failed to navigate to breadcrumb item.');
+    }
+  }
+
   async function createItem() {
     try {
       const response = await fetch(`${API_BASE}/items`, {
@@ -834,6 +859,8 @@ async function submitComment(itemId) {
               type="button"
               className="breadcrumb-button"
               disabled={index === breadcrumbPath.length - 1}
+              onClick={() => navigateToBreadcrumb(crumb)}
+              title={crumb.title}
             >
               {crumb.title}
             </button>
