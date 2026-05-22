@@ -458,3 +458,25 @@ textarea {
   font-size: 0.8rem;
   opacity: 0.8;
 }
+
+.viewing-mode {
+  outline: 2px solid rgba(180, 160, 255, 0.45);
+}
+
+.viewing-mode-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.6rem;
+  background: rgba(180, 160, 255, 0.12);
+  color: inherit;
+  font-size: 0.9rem;
+}
+
+.note-item.viewing,
+.child-card.viewing {
+  outline: 2px solid rgba(180, 160, 255, 0.55);
+}

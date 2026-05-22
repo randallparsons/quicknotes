@@ -585,6 +585,26 @@ async function submitComment(itemId) {
     setDescription(item.description || '');
   }
 
+  function previewItem(item) {
+    if (!item) return;
+
+    if (item.id === selectedId) {
+      setViewingItem(null);
+      setStatus('Current item is already open for editing.');
+      return;
+    }
+
+    // The viewing item is temporary and read-only.
+    // It does not change the current working location.
+    setViewingItem(item);
+    setStatus(`Viewing ${item.title || 'Untitled Item'} in read-only mode.`);
+  }
+
+  function returnToCurrentItem() {
+    setViewingItem(null);
+    setStatus('Returned to current item.');
+  }
+
   async function loadBreadcrumbPath(item) {
     if (!item) {
       setBreadcrumbPath([]);
@@ -1002,6 +1022,17 @@ async function submitComment(itemId) {
     );
   }
 
+  const displayedItem = viewingItem || currentItem;
+  const isViewingMode = Boolean(viewingItem);
+
+  const displayedTitle = isViewingMode
+    ? displayedItem?.title || ''
+    : title;
+
+  const displayedDescription = isViewingMode
+    ? displayedItem?.description || ''
+    : description;
+
   if (!user) {
     return (
       <div className="auth-page">
@@ -1065,8 +1096,11 @@ async function submitComment(itemId) {
             items.map((item) => (
               <button
                 key={item.id}
-                className={`note-item ${selectedId === item.id ? 'selected' : ''}`}
-                onClick={() => selectItem(item)}
+                className={`note-item ${selectedId === item.id ? 'selected' : ''} ${
+                  viewingItem?.id === item.id ? 'viewing' : ''
+                }`}
+                onClick={() => previewItem(item)}
+                onDoubleClick={() => selectItem(item)}
               >
                 <strong>{item.title || 'Untitled Item'}</strong>
                 <span>
@@ -1102,17 +1136,48 @@ async function submitComment(itemId) {
 
         {selectedId ? (
           <div className="editor-layout">
-            <section className="editor">
+            <section
+              className={`editor ${isViewingMode ? 'viewing-mode' : ''}`}
+              onDoubleClick={isViewingMode ? returnToCurrentItem : undefined}
+            >
+              {isViewingMode && (
+                <div className="viewing-mode-banner">
+                  <span>
+                    Preview Mode: {displayedItem?.title || 'Untitled Item'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      returnToCurrentItem();
+                    }}
+                  >
+                    Return to Current Item
+                  </button>
+                </div>
+              )}
+
               <input
                 className="title-input"
                 type="text"
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
+                value={displayedTitle}
+                onChange={(event) => {
+                  if (!isViewingMode) {
+                    setTitle(event.target.value);
+                  }
+                }}
+                readOnly={isViewingMode}
                 placeholder="Item title"
               />
+
               <textarea
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
+                value={displayedDescription}
+                onChange={(event) => {
+                  if (!isViewingMode) {
+                    setDescription(event.target.value);
+                  }
+                }}
+                readOnly={isViewingMode}
                 placeholder="Describe this HyperList item..."
               />
             </section>
@@ -1132,8 +1197,9 @@ async function submitComment(itemId) {
                   {childItems.map((child) => (
                     <button
                       key={child.id}
-                      className="child-card"
-                      onClick={() => selectItem(child)}
+                      className={`child-card ${viewingItem?.id === child.id ? 'viewing' : ''}`}
+                      onClick={() => previewItem(child)}
+                      onDoubleClick={() => selectItem(child)}
                     >
                       <strong>{child.title || 'Untitled Child Item'}</strong>
                       <span>
