@@ -1197,7 +1197,9 @@ async function submitComment(itemId) {
                   {childItems.map((child) => (
                     <button
                       key={child.id}
-                      className={`child-card ${viewingItem?.id === child.id ? 'viewing' : ''}`}
+                      className={`child-card ${selectedId === child.id ? 'selected' : ''} ${
+                        viewingItem?.id === child.id ? 'viewing' : ''
+                      }`}
                       onClick={() => previewItem(child)}
                       onDoubleClick={() => selectItem(child)}
                     >

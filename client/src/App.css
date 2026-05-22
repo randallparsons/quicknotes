@@ -480,3 +480,26 @@ textarea {
 .child-card.viewing {
   outline: 2px solid rgba(180, 160, 255, 0.55);
 }
+
+/* Current Selected Item: active working location */
+.note-item.selected,
+.child-card.selected {
+  border: 2px solid rgba(180, 255, 160, 0.9);
+  background: rgba(180, 255, 160, 0.14);
+  box-shadow: 0 0 14px rgba(180, 255, 160, 0.18);
+}
+
+/* Viewing Item: temporary read-only preview */
+.note-item.viewing,
+.child-card.viewing {
+  border: 2px solid rgba(180, 160, 255, 0.65);
+  background: rgba(180, 160, 255, 0.12);
+  box-shadow: 0 0 10px rgba(180, 160, 255, 0.12);
+}
+
+/* If an item is both selected and somehow viewed, selected wins visually */
+.note-item.selected.viewing,
+.child-card.selected.viewing {
+  border-color: rgba(180, 255, 160, 0.95);
+  background: rgba(180, 255, 160, 0.16);
+}
