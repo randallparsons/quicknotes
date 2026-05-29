@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import './App.css';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 const SERVER_BASE = API_BASE.replace(/\/api\/?$/, '');
@@ -23,6 +25,7 @@ function App() {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [isMarkdownEditing, setIsMarkdownEditing] = useState(false);
 
   const [childItems, setChildItems] = useState([]);
   const [childStatus, setChildStatus] = useState('');
@@ -67,6 +70,10 @@ function App() {
     loadChildItems(selectedId);
     loadMediaForItem(selectedId);
   }, [selectedId]);
+
+  useEffect(() => {
+    setIsMarkdownEditing(false);
+  }, [selectedId, viewingItem?.id]);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -1248,7 +1255,11 @@ async function submitComment(itemId) {
           <div className="editor-layout">
             <section
               className={`editor ${isViewingMode ? 'viewing-mode' : 'current-mode'}`}
-              onDoubleClick={isViewingMode ? returnToCurrentItem : undefined}
+              onDoubleClick={
+                isViewingMode && displayedItem
+                  ? () => selectItem(displayedItem)
+                  : undefined
+              }
             >
               {isViewingMode && (
                 <div className="viewing-mode-banner">
@@ -1288,16 +1299,50 @@ async function submitComment(itemId) {
                 placeholder="Item title"
               />
 
-              <textarea
-                value={displayedDescription}
-                onChange={(event) => {
-                  if (!isViewingMode) {
-                    setDescription(event.target.value);
+              {!isViewingMode && isMarkdownEditing ? (
+                <div className="markdown-editor-wrapper">
+                  <textarea
+                    className="markdown-source-editor"
+                    value={description}
+                    onChange={(event) => setDescription(event.target.value)}
+                    placeholder="Describe this HyperList item with Markdown..."
+                    autoFocus
+                  />
+
+                  <button
+                    type="button"
+                    className="markdown-done-button"
+                    onClick={() => setIsMarkdownEditing(false)}
+                  >
+                    Done
+                  </button>
+                </div>
+              ) : (
+                <div
+                  className={`markdown-view ${isViewingMode ? 'readonly' : 'editable'}`}
+                  onDoubleClick={(event) => {
+                    if (!isViewingMode) {
+                      event.stopPropagation();
+                      setIsMarkdownEditing(true);
+                    }
+                  }}
+                  title={
+                    isViewingMode
+                      ? 'Preview mode: double-click the panel to enter this item.'
+                      : 'Double-click to edit Markdown.'
                   }
-                }}
-                readOnly={isViewingMode}
-                placeholder="Describe this HyperList item..."
-              />
+                >
+                  {displayedDescription ? (
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {displayedDescription}
+                    </ReactMarkdown>
+                  ) : (
+                    <p className="empty-description">
+                      No description yet. Double-click to add Markdown.
+                    </p>
+                  )}
+                </div>
+              )}
             </section>
 
             <aside className="media-panel">
