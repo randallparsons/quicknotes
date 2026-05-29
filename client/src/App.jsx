@@ -1278,29 +1278,20 @@ async function submitComment(itemId) {
                 </div>
               )}
 
-              {!isViewingMode && currentItem && (
-                <div className="current-item-banner">
-                  <span>
-                    Current Item: {currentItem.title || 'Untitled Item'} — editing enabled
-                  </span>
-                </div>
-              )}
-
-              <input
-                className="title-input"
-                type="text"
-                value={displayedTitle}
-                onChange={(event) => {
-                  if (!isViewingMode) {
-                    setTitle(event.target.value);
-                  }
-                }}
-                readOnly={isViewingMode}
-                placeholder="Item title"
-              />
-
               {!isViewingMode && isMarkdownEditing ? (
                 <div className="markdown-editor-wrapper">
+                  <div className="markdown-editor-toolbar">
+                    <span>Editing Markdown source</span>
+
+                    <button
+                      type="button"
+                      className="markdown-done-button"
+                      onClick={() => setIsMarkdownEditing(false)}
+                    >
+                      Done / Preview
+                    </button>
+                  </div>
+
                   <textarea
                     className="markdown-source-editor"
                     value={description}
@@ -1308,14 +1299,6 @@ async function submitComment(itemId) {
                     placeholder="Describe this HyperList item with Markdown..."
                     autoFocus
                   />
-
-                  <button
-                    type="button"
-                    className="markdown-done-button"
-                    onClick={() => setIsMarkdownEditing(false)}
-                  >
-                    Done
-                  </button>
                 </div>
               ) : (
                 <div
