@@ -1278,6 +1278,27 @@ async function submitComment(itemId) {
                 </div>
               )}
 
+              {!isViewingMode && currentItem && (
+                <div className="current-item-banner">
+                  <span>
+                    Current Item: {currentItem.title || 'Untitled Item'} — editing enabled
+                  </span>
+                </div>
+              )}
+
+              <input
+                className="title-input"
+                type="text"
+                value={displayedTitle}
+                onChange={(event) => {
+                  if (!isViewingMode) {
+                    setTitle(event.target.value);
+                  }
+                }}
+                readOnly={isViewingMode}
+                placeholder="Item title"
+              />
+
               {!isViewingMode && isMarkdownEditing ? (
                 <div className="markdown-editor-wrapper">
                   <div className="markdown-editor-toolbar">
