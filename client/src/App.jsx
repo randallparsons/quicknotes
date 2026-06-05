@@ -42,6 +42,7 @@ function App() {
   const [socialUsers, setSocialUsers] = useState([]);
   const [followingUsers, setFollowingUsers] = useState([]);
   const [feedItems, setFeedItems] = useState([]);
+  const [isSocialPanelOpen, setIsSocialPanelOpen] = useState(true);
   const [feedComments, setFeedComments] = useState({});
   const [commentDrafts, setCommentDrafts] = useState({});
   const [socialStatus, setSocialStatus] = useState('');
@@ -1073,125 +1074,142 @@ async function submitComment(itemId) {
 
     return (
       <section className="social-panel">
-        <div className="media-panel-header">
-          <h3>Social</h3>
-          <button type="button" onClick={loadSocialData}>
-            Refresh
+        <div className="media-panel-header collapsible-panel-header">
+          <button
+            type="button"
+            className="panel-disclosure-button"
+            onClick={() => setIsSocialPanelOpen((prevOpen) => !prevOpen)}
+            aria-expanded={isSocialPanelOpen}
+          >
+            <span className="panel-disclosure-arrow">
+              {isSocialPanelOpen ? '▾' : '▸'}
+            </span>
+            <span className="panel-header-title">Social Features</span>
           </button>
+
+          {isSocialPanelOpen && (
+            <button type="button" onClick={loadSocialData}>
+              Refresh
+            </button>
+          )}
         </div>
 
-        {socialStatus && <p className="media-status">{socialStatus}</p>}
+        {isSocialPanelOpen && (
+          <>
+            {socialStatus && <p className="media-status">{socialStatus}</p>}
 
-        <section className="social-section">
-          <h4>Users</h4>
+            <section className="social-section">
+              <h4>Users</h4>
 
-          {availableUsers.length === 0 ? (
-            <p className="media-status">No other users found.</p>
-          ) : (
-            <div className="social-user-list">
-              {availableUsers.map((socialUser) => (
-                <div key={socialUser.id} className="social-user-row">
-                  <span>{socialUser.email}</span>
-                  <button
-                    type="button"
-                    onClick={() => toggleFollow(socialUser)}
-                  >
-                    {socialUser.is_following ? 'Unfollow' : 'Follow'}
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="social-section">
-          <h4>Following</h4>
-
-          {followingUsers.length === 0 ? (
-            <p className="media-status">You are not following anyone yet.</p>
-          ) : (
-            <div className="following-list">
-              {followingUsers.map((followedUser) => (
-                <div key={followedUser.id} className="following-card">
-                  <strong>{followedUser.email}</strong>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="social-section">
-          <h4>Followed Item Feed</h4>
-
-          {feedItems.length === 0 ? (
-            <p className="media-status">
-              Follow another user to see their HyperList items here.
-            </p>
-          ) : (
-            <div className="feed-list">
-              {feedItems.map((feedItem) => (
-                <article key={feedItem.id} className="feed-card">
-                  <div className="feed-card-header">
-                    <strong>{feedItem.title || 'Untitled Item'}</strong>
-                    <span>{feedItem.owner_email}</span>
-                  </div>
-
-                  <p>
-                    {feedItem.description
-                      ? feedItem.description
-                      : 'No description yet.'}
-                  </p>
-
-                  <div className="feed-meta">
-                    <span>Likes: {feedItem.like_count || 0}</span>
-                    <span>Comments: {feedItem.comment_count || 0}</span>
-                  </div>
-
-                  <div className="feed-actions">
-                    <button type="button" onClick={() => toggleLike(feedItem)}>
-                      {feedItem.liked_by_current_user ? 'Unlike' : 'Like'}
-                    </button>
-
-                    <button type="button" onClick={() => loadCommentsForItem(feedItem.id)}>
-                      View Comments
-                    </button>
-                  </div>
-
-                  <form
-                    className="comment-form"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      submitComment(feedItem.id);
-                    }}
-                  >
-                    <input
-                      type="text"
-                      value={commentDrafts[feedItem.id] || ''}
-                      onChange={(event) => updateCommentDraft(feedItem.id, event.target.value)}
-                      placeholder="Add a comment..."
-                    />
-                    <button type="submit">Comment</button>
-                  </form>
-
-                  {feedComments[feedItem.id] && (
-                    <div className="comment-list">
-                      {feedComments[feedItem.id].length === 0 ? (
-                        <p className="media-status">No comments yet.</p>
-                      ) : (
-                        feedComments[feedItem.id].map((comment) => (
-                          <div key={comment.id} className="comment-card">
-                            <strong>{comment.email}</strong>
-                            <p>{comment.comment_text}</p>
-                          </div>
-                        ))
-                      )}
+              {availableUsers.length === 0 ? (
+                <p className="media-status">No other users found.</p>
+              ) : (
+                <div className="social-user-list">
+                  {availableUsers.map((socialUser) => (
+                    <div key={socialUser.id} className="social-user-row">
+                      <span>{socialUser.email}</span>
+                      <button
+                        type="button"
+                        onClick={() => toggleFollow(socialUser)}
+                      >
+                        {socialUser.is_following ? 'Unfollow' : 'Follow'}
+                      </button>
                     </div>
-                  )}
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="social-section">
+              <h4>Following</h4>
+
+              {followingUsers.length === 0 ? (
+                <p className="media-status">You are not following anyone yet.</p>
+              ) : (
+                <div className="following-list">
+                  {followingUsers.map((followedUser) => (
+                    <div key={followedUser.id} className="following-card">
+                      <strong>{followedUser.email}</strong>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="social-section">
+              <h4>Followed Item Feed</h4>
+
+              {feedItems.length === 0 ? (
+                <p className="media-status">
+                  Follow another user to see their HyperList items here.
+                </p>
+              ) : (
+                <div className="feed-list">
+                  {feedItems.map((feedItem) => (
+                    <article key={feedItem.id} className="feed-card">
+                      <div className="feed-card-header">
+                        <strong>{feedItem.title || 'Untitled Item'}</strong>
+                        <span>{feedItem.owner_email}</span>
+                      </div>
+
+                      <p>
+                        {feedItem.description
+                          ? feedItem.description
+                          : 'No description yet.'}
+                      </p>
+
+                      <div className="feed-meta">
+                        <span>Likes: {feedItem.like_count || 0}</span>
+                        <span>Comments: {feedItem.comment_count || 0}</span>
+                      </div>
+
+                      <div className="feed-actions">
+                        <button type="button" onClick={() => toggleLike(feedItem)}>
+                          {feedItem.liked_by_current_user ? 'Unlike' : 'Like'}
+                        </button>
+
+                        <button type="button" onClick={() => loadCommentsForItem(feedItem.id)}>
+                          View Comments
+                        </button>
+                      </div>
+
+                      <form
+                        className="comment-form"
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          submitComment(feedItem.id);
+                        }}
+                      >
+                        <input
+                          type="text"
+                          value={commentDrafts[feedItem.id] || ''}
+                          onChange={(event) => updateCommentDraft(feedItem.id, event.target.value)}
+                          placeholder="Add a comment..."
+                        />
+                        <button type="submit">Comment</button>
+                      </form>
+
+                      {feedComments[feedItem.id] && (
+                        <div className="comment-list">
+                          {feedComments[feedItem.id].length === 0 ? (
+                            <p className="media-status">No comments yet.</p>
+                          ) : (
+                            feedComments[feedItem.id].map((comment) => (
+                              <div key={comment.id} className="comment-card">
+                                <strong>{comment.email}</strong>
+                                <p>{comment.comment_text}</p>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          </>
+        )}
       </section>
     );
   }
