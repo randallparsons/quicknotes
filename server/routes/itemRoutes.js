@@ -18,6 +18,32 @@ function normalizeParentId(parentId) {
   return parentId;
 }
 
+async function getSiblingItems(userId, parentId) {
+  let query;
+  let params;
+
+  if (parentId === null) {
+    query = `
+      SELECT id, user_id, parent_id, title, description, created_at, updated_at, sort_order
+      FROM hyper_items
+      WHERE user_id = ? AND parent_id IS NULL
+      ORDER BY sort_order ASC, created_at ASC, id ASC
+    `;
+    params = [userId];
+  } else {
+    query = `
+      SELECT id, user_id, parent_id, title, description, created_at, updated_at, sort_order
+      FROM hyper_items
+      WHERE user_id = ? AND parent_id = ?
+      ORDER BY sort_order ASC, created_at ASC, id ASC
+    `;
+    params = [userId, parentId];
+  }
+
+  const [items] = await db.query(query, params);
+  return items;
+}
+
 // GET /api/items
 // Optional: /api/items?parentId=14
 // Optional root forms: /api/items, /api/items?parentId=root, /api/items?parentId=null
@@ -138,6 +164,122 @@ router.post('/items', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Create HyperList item error:', error);
     res.status(500).json({ error: 'Failed to create HyperList item' });
+  }
+});
+
+// PATCH /api/items/:id/move
+router.patch('/items/:id/move', requireAuth, async (req, res) => {
+  try {
+    const { direction } = req.body;
+
+    if (direction !== 'up' && direction !== 'down') {
+      return res.status(400).json({ error: 'Direction must be "up" or "down"' });
+    }
+
+    const [items] = await db.query(
+      `SELECT id, user_id, parent_id, sort_order
+       FROM hyper_items
+       WHERE id = ? AND user_id = ?`,
+      [req.params.id, req.session.userId]
+    );
+
+    if (items.length === 0) {
+      return res.status(404).json({ error: 'HyperList item not found' });
+    }
+
+    const item = items[0];
+
+    let neighborQuery;
+    let neighborParams;
+
+    if (item.parent_id === null) {
+      if (direction === 'up') {
+        neighborQuery = `
+          SELECT id, sort_order
+          FROM hyper_items
+          WHERE user_id = ?
+            AND parent_id IS NULL
+            AND sort_order < ?
+          ORDER BY sort_order DESC, created_at DESC, id DESC
+          LIMIT 1
+        `;
+      } else {
+        neighborQuery = `
+          SELECT id, sort_order
+          FROM hyper_items
+          WHERE user_id = ?
+            AND parent_id IS NULL
+            AND sort_order > ?
+          ORDER BY sort_order ASC, created_at ASC, id ASC
+          LIMIT 1
+        `;
+      }
+
+      neighborParams = [req.session.userId, item.sort_order];
+    } else {
+      if (direction === 'up') {
+        neighborQuery = `
+          SELECT id, sort_order
+          FROM hyper_items
+          WHERE user_id = ?
+            AND parent_id = ?
+            AND sort_order < ?
+          ORDER BY sort_order DESC, created_at DESC, id DESC
+          LIMIT 1
+        `;
+      } else {
+        neighborQuery = `
+          SELECT id, sort_order
+          FROM hyper_items
+          WHERE user_id = ?
+            AND parent_id = ?
+            AND sort_order > ?
+          ORDER BY sort_order ASC, created_at ASC, id ASC
+          LIMIT 1
+        `;
+      }
+
+      neighborParams = [req.session.userId, item.parent_id, item.sort_order];
+    }
+
+    const [neighbors] = await db.query(neighborQuery, neighborParams);
+
+    if (neighbors.length === 0) {
+      const siblingItems = await getSiblingItems(req.session.userId, item.parent_id);
+
+      return res.json({
+        message: `Item is already at the ${direction === 'up' ? 'top' : 'bottom'} of this list`,
+        items: siblingItems
+      });
+    }
+
+    const neighbor = neighbors[0];
+
+    await db.query(
+      `UPDATE hyper_items
+       SET sort_order = ?
+       WHERE id = ? AND user_id = ?`,
+      [neighbor.sort_order, item.id, req.session.userId]
+    );
+
+    await db.query(
+      `UPDATE hyper_items
+       SET sort_order = ?
+       WHERE id = ? AND user_id = ?`,
+      [item.sort_order, neighbor.id, req.session.userId]
+    );
+
+    const siblingItems = await getSiblingItems(req.session.userId, item.parent_id);
+
+    res.json({
+      message: `Item moved ${direction}`,
+      movedItemId: item.id,
+      swappedWithId: neighbor.id,
+      items: siblingItems
+    });
+  } catch (error) {
+    console.error('Move HyperList item error:', error);
+    res.status(500).json({ error: 'Failed to move HyperList item' });
   }
 });
 
