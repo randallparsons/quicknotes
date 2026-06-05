@@ -22,6 +22,8 @@ function App() {
   const [parentItem, setParentItem] = useState(null);
   const [siblingItems, setSiblingItems] = useState([]);
   const [siblingStatus, setSiblingStatus] = useState('');
+  const [isOrderingMode, setIsOrderingMode] = useState(false);
+  const [isMovingItem, setIsMovingItem] = useState(false);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -456,7 +458,7 @@ async function submitComment(itemId) {
         throw new Error(newItem.error || 'Failed to create child item');
       }
 
-      setChildItems((prevItems) => [newItem, ...prevItems]);
+      setChildItems((prevItems) => [...prevItems, newItem]);
       setChildStatus('');
       setStatus('New child item created.');
     } catch (error) {
@@ -800,6 +802,58 @@ async function submitComment(itemId) {
     }
   }
 
+  async function moveSiblingItem(itemId, direction) {
+    try {
+      setIsMovingItem(true);
+
+      const response = await fetch(`${API_BASE}/items/${itemId}/move`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ direction })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to move item');
+      }
+
+      const updatedSiblingItems = data.items || [];
+
+      setSiblingItems(updatedSiblingItems);
+
+      if (!parentItem) {
+        setItems(updatedSiblingItems);
+      }
+
+      const updatedCurrentItem = updatedSiblingItems.find(
+        (item) => item.id === currentItem?.id
+      );
+
+      if (updatedCurrentItem) {
+        setCurrentItem(updatedCurrentItem);
+      }
+
+      const updatedViewingItem = updatedSiblingItems.find(
+        (item) => item.id === viewingItem?.id
+      );
+
+      if (updatedViewingItem) {
+        setViewingItem(updatedViewingItem);
+      }
+
+      setStatus(data.message || `Item moved ${direction}.`);
+    } catch (error) {
+      console.error('Move sibling item failed:', error);
+      setStatus('Failed to move item.');
+    } finally {
+      setIsMovingItem(false);
+    }
+  }
+
   async function createItem() {
     try {
       const response = await fetch(`${API_BASE}/items`, {
@@ -821,7 +875,7 @@ async function submitComment(itemId) {
         throw new Error(newItem.error || 'Failed to create HyperList item');
       }
 
-      const updatedItems = [newItem, ...items];
+      const updatedItems = [...items, newItem];
       setItems(updatedItems);
       selectItem(newItem);
       setStatus('New HyperList item created.');
@@ -1197,7 +1251,24 @@ async function submitComment(itemId) {
           )}
 
           <section className="sibling-section">
-            <h3>{parentItem ? 'Sibling Items' : 'Root Items'}</h3>
+            <div className="sibling-section-header">
+              <h3>{parentItem ? 'Sibling Items' : 'Root Items'}</h3>
+
+              <button
+                type="button"
+                className="ordering-toggle-button"
+                onClick={() => setIsOrderingMode((prevMode) => !prevMode)}
+                disabled={siblingItems.length < 2}
+              >
+                {isOrderingMode ? 'Done Ordering' : 'Edit List Order'}
+              </button>
+            </div>
+
+            {isOrderingMode && (
+              <p className="ordering-mode-hint">
+                List Order Mode — use the blue arrows to move items up or down.
+              </p>
+            )}
 
             {siblingStatus && <p className="empty-message">{siblingStatus}</p>}
 
@@ -1207,24 +1278,71 @@ async function submitComment(itemId) {
                   {parentItem ? 'No sibling items found.' : 'No root items yet.'}
                 </p>
               ) : (
-                siblingItems.map((item) => (
-                  <button
-                    key={item.id}
-                    className={`note-item ${selectedId === item.id ? 'selected' : ''} ${
-                      viewingItem?.id === item.id ? 'viewing' : ''
-                    }`}
-                    onClick={() => previewItem(item)}
-                    onDoubleClick={() => selectItem(item)}
-                    title={item.title || 'Untitled Item'}
-                  >
-                    <strong>{item.title || 'Untitled Item'}</strong>
-                    <span>
-                      {item.description
-                        ? item.description.slice(0, 40)
-                        : 'No description yet...'}
-                    </span>
-                  </button>
-                ))
+                siblingItems.map((item, index) => {
+                  const isFirstItem = index === 0;
+                  const isLastItem = index === siblingItems.length - 1;
+
+                  return (
+                    <div
+                      key={item.id}
+                      className={`note-item sibling-card ${
+                        selectedId === item.id ? 'selected' : ''
+                      } ${viewingItem?.id === item.id ? 'viewing' : ''} ${
+                        isOrderingMode ? 'ordering' : ''
+                      }`}
+                      onClick={() => {
+                        if (!isOrderingMode) {
+                          previewItem(item);
+                        }
+                      }}
+                      onDoubleClick={() => {
+                        if (!isOrderingMode) {
+                          selectItem(item);
+                        }
+                      }}
+                      title={item.title || 'Untitled Item'}
+                    >
+                      <div className="note-item-content">
+                        <strong>{item.title || 'Untitled Item'}</strong>
+                        <span>
+                          {item.description
+                            ? item.description.slice(0, 40)
+                            : 'No description yet...'}
+                        </span>
+                      </div>
+
+                      {isOrderingMode && (
+                        <div className="order-controls" aria-label="Move item controls">
+                          <button
+                            type="button"
+                            className="order-arrow-button"
+                            disabled={isFirstItem || isMovingItem}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              moveSiblingItem(item.id, 'up');
+                            }}
+                            title="Move item up"
+                          >
+                            ▲
+                          </button>
+
+                          <button
+                            type="button"
+                            className="order-arrow-button"
+                            disabled={isLastItem || isMovingItem}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              moveSiblingItem(item.id, 'down');
+                            }}
+                            title="Move item down"
+                          >
+                            ▼
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
               )}
             </div>
           </section>

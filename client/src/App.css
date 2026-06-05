@@ -116,6 +116,70 @@ textarea {
   overflow-y: auto;
 }
 
+.sibling-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.ordering-toggle-button {
+  font-size: 0.8rem;
+  padding: 0.35rem 0.6rem;
+  white-space: nowrap;
+}
+
+.ordering-mode-hint {
+  margin: 0.35rem 0 0.6rem;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.sibling-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.sibling-card.ordering {
+  cursor: default;
+}
+
+.order-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  flex-shrink: 0;
+}
+
+.order-arrow-button {
+  border: none;
+  background: transparent;
+  color: #3b82f6;
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 0.1rem 0.2rem;
+  transition: color 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
+}
+
+.order-arrow-button:hover:not(:disabled) {
+  color: #60a5fa;
+  transform: scale(1.15);
+}
+
+.order-arrow-button:disabled {
+  color: #8aa7c7;
+  cursor: default;
+  opacity: 0.45;
+  transform: none;
+}
+
 .note-item {
   text-align: left;
   border: 1px solid #ddd;
@@ -140,6 +204,29 @@ textarea {
 .note-item span {
   font-size: 0.85rem;
   color: #666;
+}
+
+.note-item {
+  width: 100%;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.note-item-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.note-item-content strong,
+.note-item-content span {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .editor-panel {
@@ -683,6 +770,67 @@ textarea {
   text-align: left;
 }
 
+/* Manual ordering layout fix for sibling/root cards */
+.note-item.sibling-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.note-item.sibling-card .note-item-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.note-item.sibling-card .note-item-content strong,
+.note-item.sibling-card .note-item-content span {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-item.sibling-card .order-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.note-item.sibling-card .order-arrow-button {
+  border: none;
+  background: transparent;
+  color: #3b82f6;
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 0.1rem 0.2rem;
+}
+
+.note-item.sibling-card .order-arrow-button:hover:not(:disabled) {
+  color: #60a5fa;
+  transform: scale(1.15);
+}
+
+.note-item.sibling-card .order-arrow-button:disabled {
+  color: #8aa7c7;
+  cursor: default;
+  opacity: 0.45;
+  transform: none;
+}
+
 .parent-context-card {
   cursor: pointer;
 }
@@ -704,4 +852,22 @@ textarea {
 .parent-context-card.viewing {
   background: rgba(180, 160, 255, 0.12);
   box-shadow: 0 0 10px rgba(180, 160, 255, 0.12);
+}
+
+/* Small left-panel spacing refinements */
+.parent-context-section h3,
+.sibling-section h3 {
+  padding-left: 1rem;
+}
+
+.sibling-section-header {
+  padding-right: 1rem;
+}
+
+/* Match Parent/Root context card width to sibling card spacing */
+.parent-context-card,
+.root-context-card {
+  width: calc(100% - 2rem);
+  margin-left: 1rem;
+  margin-right: 1rem;
 }
