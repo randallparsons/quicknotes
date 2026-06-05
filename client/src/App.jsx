@@ -965,6 +965,40 @@ async function submitComment(itemId) {
     }
   }
 
+  async function deleteChildItem(childId, childTitle) {
+    const confirmed = window.confirm(
+      `Delete child item "${childTitle || 'Untitled Child Item'}"?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/items/${childId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete child item');
+      }
+
+      setChildItems((prevItems) =>
+        prevItems.filter((child) => child.id !== childId)
+      );
+
+      if (viewingItem?.id === childId) {
+        setViewingItem(null);
+      }
+
+      setStatus('Child item deleted.');
+    } catch (error) {
+      console.error('Delete child item failed:', error);
+      setStatus('Failed to delete child item.');
+    }
+  }  
+
   function renderMediaItem(media) {
     const mediaUrl = getMediaUrl(media.file_url);
 
@@ -1489,23 +1523,43 @@ async function submitComment(itemId) {
                 {childStatus && <p className="media-status">{childStatus}</p>}
 
                 <div className="child-list">
-                  {childItems.map((child) => (
-                    <button
-                      key={child.id}
-                      className={`child-card ${selectedId === child.id ? 'selected' : ''} ${
-                        viewingItem?.id === child.id ? 'viewing' : ''
-                      }`}
-                      onClick={() => previewItem(child)}
-                      onDoubleClick={() => selectItem(child)}
-                    >
-                      <strong>{child.title || 'Untitled Child Item'}</strong>
-                      <span>
-                        {child.description
-                          ? child.description.slice(0, 50)
-                          : 'No description yet...'}
-                      </span>
-                    </button>
-                  ))}
+                  {childItems.map((child) => {
+                    const isPreviewedChild = viewingItem?.id === child.id;
+
+                    return (
+                      <div
+                        key={child.id}
+                        className={`child-card ${selectedId === child.id ? 'selected' : ''} ${
+                          isPreviewedChild ? 'viewing' : ''
+                        }`}
+                        onClick={() => previewItem(child)}
+                        onDoubleClick={() => selectItem(child)}
+                        title={child.title || 'Untitled Child Item'}
+                      >
+                        <div className="child-card-content">
+                          <strong>{child.title || 'Untitled Child Item'}</strong>
+                          <span>
+                            {child.description
+                              ? child.description.slice(0, 50)
+                              : 'No description yet...'}
+                          </span>
+                        </div>
+
+                        {isPreviewedChild && (
+                          <button
+                            type="button"
+                            className="child-delete-button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              deleteChildItem(child.id, child.title);
+                            }}
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </section>
 
