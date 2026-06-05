@@ -912,3 +912,37 @@ textarea {
 .child-delete-button:hover {
   background: #a52828;
 }
+
+/* Collapsible panel disclosure controls */
+.collapsible-panel-header {
+  align-items: center;
+}
+
+.panel-disclosure-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.panel-header-title {
+  font-size: 1.17em;
+  font-weight: 700;
+}
+
+.panel-disclosure-arrow {
+  color: #3b82f6;
+  font-size: 0.9rem;
+  line-height: 1;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.panel-disclosure-button:hover .panel-disclosure-arrow {
+  color: #60a5fa;
+  transform: scale(1.12);
+}

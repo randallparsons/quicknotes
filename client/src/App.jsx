@@ -34,6 +34,7 @@ function App() {
   const [mediaItems, setMediaItems] = useState([]);
   const [mediaStatus, setMediaStatus] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
+  const [isMediaPanelOpen, setIsMediaPanelOpen] = useState(true);
   const [uploadStatus, setUploadStatus] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [fileInputKey, setFileInputKey] = useState(0);
@@ -1565,50 +1566,70 @@ async function submitComment(itemId) {
 
               <div className="panel-divider" />
 
-              <div className="media-panel-header">
-                <h3>Attached Media</h3>
-                <button onClick={() => loadMediaForItem(selectedId)}>
-                  Refresh
+              <div className="media-panel-header collapsible-panel-header">
+                <button
+                  type="button"
+                  className="panel-disclosure-button"
+                  onClick={() => setIsMediaPanelOpen((prevOpen) => !prevOpen)}
+                  aria-expanded={isMediaPanelOpen}
+                >
+                  <span className="panel-disclosure-arrow">
+                    {isMediaPanelOpen ? '▾' : '▸'}
+                  </span>
+                  <span className="panel-header-title">Attached Media</span>
                 </button>
+
+                {isMediaPanelOpen && (
+                  <button
+                    type="button"
+                    onClick={() => loadMediaForItem(selectedId)}
+                  >
+                    Refresh
+                  </button>
+                )}
               </div>
 
-              <form className="media-upload-form" onSubmit={handleMediaUpload}>
-                <input
-                  key={fileInputKey}
-                  type="file"
-                  accept=".jpg,.jpeg,.png,.gif,.mp4,.mov,.mp3,.wav,.ogg,.webm,image/jpeg,image/png,image/gif,video/mp4,video/quicktime,audio/mpeg,audio/wav,audio/ogg,audio/webm"
-                  onChange={(event) => setSelectedFile(event.target.files[0] || null)}
-                />
-                <button type="submit" disabled={!selectedFile || isUploading}>
-                  {isUploading ? 'Uploading...' : 'Upload Media'}
-                </button>
-              </form>
-
-              {uploadStatus && <p className="media-status">{uploadStatus}</p>}
-              {mediaStatus && <p className="media-status">{mediaStatus}</p>}
-
-              <div className="media-grid">
-                {mediaItems.map((media) => (
-                  <article key={media.id} className="media-card">
-                    <div className="media-preview">
-                      {renderMediaItem(media)}
-                    </div>
-                    
-                    <div className="media-info">
-                      <strong>{media.original_name}</strong>
-                      <span>{media.media_type}</span>
-                    </div>
-
-                    <button
-                      type="button"
-                      className="media-delete-button"
-                      onClick={() => deleteMedia(media.id)}
-                    >
-                      Delete Media
+              {isMediaPanelOpen && (
+                <>
+                  <form className="media-upload-form" onSubmit={handleMediaUpload}>
+                    <input
+                      key={fileInputKey}
+                      type="file"
+                      accept=".jpg,.jpeg,.png,.gif,.mp4,.mov,.mp3,.wav,.ogg,.webm,image/jpeg,image/png,image/gif,video/mp4,video/quicktime,audio/mpeg,audio/wav,audio/ogg,audio/webm"
+                      onChange={(event) => setSelectedFile(event.target.files[0] || null)}
+                    />
+                    <button type="submit" disabled={!selectedFile || isUploading}>
+                      {isUploading ? 'Uploading...' : 'Upload Media'}
                     </button>
-                  </article>
-                ))}
-              </div>
+                  </form>
+
+                  {uploadStatus && <p className="media-status">{uploadStatus}</p>}
+                  {mediaStatus && <p className="media-status">{mediaStatus}</p>}
+
+                  <div className="media-grid">
+                    {mediaItems.map((media) => (
+                      <article key={media.id} className="media-card">
+                        <div className="media-preview">
+                          {renderMediaItem(media)}
+                        </div>
+                        
+                        <div className="media-info">
+                          <strong>{media.original_name}</strong>
+                          <span>{media.media_type}</span>
+                        </div>
+
+                        <button
+                          type="button"
+                          className="media-delete-button"
+                          onClick={() => deleteMedia(media.id)}
+                        >
+                          Delete Media
+                        </button>
+                      </article>
+                    ))}
+                  </div>
+                </>
+              )}
               <div className="panel-divider" />
 
               {renderSocialPanel()}
