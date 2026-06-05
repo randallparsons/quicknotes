@@ -30,18 +30,18 @@ router.get('/items', requireAuth, async (req, res) => {
 
     if (parentId === null) {
       query = `
-        SELECT id, user_id, parent_id, title, description, created_at, updated_at
+        SELECT id, user_id, parent_id, title, description, created_at, updated_at, sort_order
         FROM hyper_items
         WHERE user_id = ? AND parent_id IS NULL
-        ORDER BY updated_at DESC
+        ORDER BY sort_order ASC, created_at ASC, id ASC
       `;
       params = [req.session.userId];
     } else {
       query = `
-        SELECT id, user_id, parent_id, title, description, created_at, updated_at
+        SELECT id, user_id, parent_id, title, description, created_at, updated_at, sort_order
         FROM hyper_items
         WHERE user_id = ? AND parent_id = ?
-        ORDER BY updated_at DESC
+        ORDER BY sort_order ASC, created_at ASC, id ASC
       `;
       params = [req.session.userId, parentId];
     }
@@ -59,7 +59,7 @@ router.get('/items', requireAuth, async (req, res) => {
 router.get('/items/:id', requireAuth, async (req, res) => {
   try {
     const [items] = await db.query(
-      `SELECT id, user_id, parent_id, title, description, created_at, updated_at
+      `SELECT id, user_id, parent_id, title, description, created_at, updated_at, sort_order
        FROM hyper_items
        WHERE id = ? AND user_id = ?`,
       [req.params.id, req.session.userId]
@@ -93,19 +93,42 @@ router.post('/items', requireAuth, async (req, res) => {
       }
     }
 
+    let nextOrderQuery;
+    let nextOrderParams;
+
+    if (normalizedParentId === null) {
+      nextOrderQuery = `
+        SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_sort_order
+        FROM hyper_items
+        WHERE user_id = ? AND parent_id IS NULL
+      `;
+      nextOrderParams = [req.session.userId];
+    } else {
+      nextOrderQuery = `
+        SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_sort_order
+        FROM hyper_items
+        WHERE user_id = ? AND parent_id = ?
+      `;
+      nextOrderParams = [req.session.userId, normalizedParentId];
+    }
+
+    const [orderRows] = await db.query(nextOrderQuery, nextOrderParams);
+    const nextSortOrder = orderRows[0].next_sort_order;
+
     const [result] = await db.query(
-      `INSERT INTO hyper_items (user_id, parent_id, title, description)
-       VALUES (?, ?, ?, ?)`,
+      `INSERT INTO hyper_items (user_id, parent_id, title, description, sort_order)
+       VALUES (?, ?, ?, ?, ?)`,
       [
         req.session.userId,
         normalizedParentId,
         title || 'Untitled Item',
-        description || ''
+        description || '',
+        nextSortOrder
       ]
     );
 
     const [newItem] = await db.query(
-      `SELECT id, user_id, parent_id, title, description, created_at, updated_at
+      `SELECT id, user_id, parent_id, title, description, created_at, updated_at, sort_order
        FROM hyper_items
        WHERE id = ? AND user_id = ?`,
       [result.insertId, req.session.userId]
@@ -140,7 +163,7 @@ router.put('/items/:id', requireAuth, async (req, res) => {
     }
 
     const [updatedItem] = await db.query(
-      `SELECT id, user_id, parent_id, title, description, created_at, updated_at
+      `SELECT id, user_id, parent_id, title, description, created_at, updated_at, sort_order
        FROM hyper_items
        WHERE id = ? AND user_id = ?`,
       [req.params.id, req.session.userId]
