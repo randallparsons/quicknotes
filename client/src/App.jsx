@@ -910,6 +910,16 @@ async function submitComment(itemId) {
         )
       );
 
+      setSiblingItems((prevItems) =>
+        prevItems.map((item) =>
+          item.id === selectedId ? updatedItem : item
+        )
+      );
+
+      setCurrentItem((prevItem) =>
+        prevItem?.id === selectedId ? updatedItem : prevItem
+      );
+
       setStatus('Saved');
     } catch (error) {
       console.error('Save HyperList item failed:', error);
