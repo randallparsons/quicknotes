@@ -60,6 +60,18 @@ function App() {
   }, [user]);
 
   useEffect(() => {
+  if (!user || !currentItem?.id) return;
+
+  saveCurrentWorkingItem(currentItem.id);
+}, [user, currentItem?.id]); 
+
+  useEffect(() => {
+    if (!user || !currentItem?.id) return;
+
+    saveCurrentWorkingItem(currentItem.id);
+  }, [user, currentItem?.id]);
+
+  useEffect(() => {
     setSelectedFile(null);
     setUploadStatus('');
     setFileInputKey((prevKey) => prevKey + 1);
@@ -334,6 +346,22 @@ async function submitComment(itemId) {
 
       const data = await response.json();
       setItems(data);
+
+      try {
+        const currentResponse = await fetch(`${API_BASE}/current-item`, {
+          credentials: 'include'
+        });
+
+        const currentData = await currentResponse.json();
+
+        if (currentResponse.ok && currentData.item) {
+          selectItem(currentData.item);
+          setStatus('Restored last Current Working Item.');
+          return;
+        }
+      } catch (error) {
+        console.error('Restore Current Working Item failed:', error);
+      }
 
       if (data.length > 0) {
         const firstItem = data[0];
@@ -645,6 +673,29 @@ async function submitComment(itemId) {
     }
   }
 
+  async function saveCurrentWorkingItem(itemId) {
+    if (!itemId) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/current-item`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ itemId })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save Current Working Item');
+      }
+    } catch (error) {
+      console.error('Save Current Working Item failed:', error);
+    }
+  }
+
   function selectItem(item) {
     setSelectedId(item.id);
 
@@ -677,6 +728,10 @@ async function submitComment(itemId) {
     // It does not change the current working location.
     setViewingItem(item);
     setStatus(`Viewing ${item.title || 'Untitled Item'} in read-only mode.`);
+
+    if (options.saveCurrent !== false) {
+      saveCurrentWorkingItem(item.id);
+    }
   }
 
   function returnToCurrentItem() {
