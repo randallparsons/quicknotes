@@ -102,6 +102,89 @@ router.get('/items/:id', requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/current-item
+router.get('/current-item', requireAuth, async (req, res) => {
+  try {
+    const [users] = await db.query(
+      'SELECT last_current_item_id FROM users WHERE id = ?',
+      [req.session.userId]
+    );
+
+    if (users.length === 0 || !users[0].last_current_item_id) {
+      return res.json({ item: null });
+    }
+
+    const savedItemId = users[0].last_current_item_id;
+
+    const [items] = await db.query(
+      `SELECT id, user_id, parent_id, title, description, created_at, updated_at, sort_order
+       FROM hyper_items
+       WHERE id = ? AND user_id = ?`,
+      [savedItemId, req.session.userId]
+    );
+
+    if (items.length === 0) {
+      await db.query(
+        'UPDATE users SET last_current_item_id = NULL WHERE id = ?',
+        [req.session.userId]
+      );
+
+      return res.json({
+        item: null,
+        message: 'Saved Current Working Item no longer exists.'
+      });
+    }
+
+    res.json({ item: items[0] });
+  } catch (error) {
+    console.error('Get Current Working Item error:', error);
+    res.status(500).json({ error: 'Failed to load Current Working Item' });
+  }
+});
+
+// PATCH /api/current-item
+router.patch('/current-item', requireAuth, async (req, res) => {
+  try {
+    const { itemId } = req.body;
+
+    if (!itemId) {
+      await db.query(
+        'UPDATE users SET last_current_item_id = NULL WHERE id = ?',
+        [req.session.userId]
+      );
+
+      return res.json({
+        message: 'Current Working Item cleared.',
+        item: null
+      });
+    }
+
+    const [items] = await db.query(
+      `SELECT id, user_id, parent_id, title, description, created_at, updated_at, sort_order
+       FROM hyper_items
+       WHERE id = ? AND user_id = ?`,
+      [itemId, req.session.userId]
+    );
+
+    if (items.length === 0) {
+      return res.status(404).json({ error: 'HyperList item not found' });
+    }
+
+    await db.query(
+      'UPDATE users SET last_current_item_id = ? WHERE id = ?',
+      [itemId, req.session.userId]
+    );
+
+    res.json({
+      message: 'Current Working Item saved.',
+      item: items[0]
+    });
+  } catch (error) {
+    console.error('Save Current Working Item error:', error);
+    res.status(500).json({ error: 'Failed to save Current Working Item' });
+  }
+});
+
 // POST /api/items
 router.post('/items', requireAuth, async (req, res) => {
   try {
