@@ -1,12 +1,27 @@
+# Dependencies
 node_modules/
+
+# Environment variables
 .env
+
+# Build/cache output
 dist/
 .vite/
+
+# Local system files
 .DS_Store
 npm-debug.log*
+
+# Local/session/test artifacts
 cookies.txt
+
 # Uploaded media files
 server/uploads/*
 !server/uploads/.gitkeep
+
 # Local backup files
 *.bak
+
+# Private keys
+*.pem
+*.key
