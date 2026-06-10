@@ -1,100 +1,247 @@
-# HyperList Media+
+# HyperList
 
-HyperList Media+ is a full-stack web application prototype that extends the original QuickNotes project into a nested multimedia organization platform.
+HyperList is a full-stack web application prototype that extends a simple note-taking project into a nested knowledge organization platform.
 
-The core idea is simple: each item in a HyperList can act as both a piece of content and a container for more content. Users can create nested items, move through parent and child levels, and attach media directly to any selected item.
+The main idea behind HyperList is that each item can function as both a piece of content and a container for additional content. Users can create nested items, move through parent and child levels, add descriptions, attach media, and interact with list content through a growing set of organization and social features.
 
-## Project Concept
+This project was developed as a course-based full-stack application and final project demonstration. It brings together React, Node.js, Express, MySQL, Git/GitHub, AWS EC2 deployment, environment-based configuration, documentation, testing practice, and automation.
 
-QuickNotes began as a basic full-stack note application. HyperList expands that idea into a hierarchical structure where items can be organized like nested lists, outlines, folders, or knowledge nodes.
+## Project Purpose
 
-HyperList Media+ adds media handling to that structure. Instead of storing only text, each selected item can now support uploaded images, videos, and audio files.
+HyperList is designed to help users organize information in a flexible nested structure. Instead of treating notes as flat, separate entries, HyperList allows each item to become part of a larger hierarchy.
 
-This makes the project a proof-of-concept for organizing mixed content types inside a nested interface.
+This makes the project useful as a prototype for:
+
+- Nested note-taking
+- Project planning
+- Outlining
+- Knowledge organization
+- Multimedia content organization
+- Structured document building
 
 ## Current Features
 
 - User authentication with session-based login
 - Nested HyperList items with parent-child relationships
-- Selected item detail view with title and description
-- Child item navigation panel
-- Up One Level navigation
-- Media upload support for images, videos, and audio
+- Current item view with editable title and description
+- Child item navigation
+- Parent and sibling navigation
+- Markdown-rendered description content
+- Manual list ordering with Up/Down controls
+- Media uploads for images, videos, and audio
 - Browser-based rendering for uploaded media
 - Native browser controls for video and audio playback
 - MySQL metadata storage for uploaded media
 - Local server filesystem storage for uploaded files
-- AWS EC2 deployment for production testing
+- Social features including follows, likes, comments, and a feed
+- GitHub Actions workflow for automated project checks
+- AWS EC2 deployment for production-style testing
 
-## Tech Stack
+## Technologies Used
 
 ### Frontend
 
 - React
 - Vite
 - JavaScript
-- HTML/CSS
+- HTML
+- CSS
+- react-markdown
+- remark-gfm
 
 ### Backend
 
 - Node.js
 - Express
-- Multer for file upload handling
-- Express sessions for authentication
+- Express sessions
+- Multer for file uploads
+- dotenv for environment-based configuration
 
 ### Database
 
 - MySQL
 
+### Development Tools
+
+- Git
+- GitHub
+- GitHub Actions
+- VS Code
+- npm
+- ESLint and Vitest practice during development
+
 ### Deployment
 
 - AWS EC2
 - Ubuntu Server
-- Git and GitHub
-- Environment-based configuration for local and production use
+- Environment variables for local and deployed configuration
 
-## Media Handling Design
+## Repository Structure
 
-Uploaded media files are saved in the server filesystem under the uploads directory.
+The project is organized into separate frontend and backend sections.
 
-The actual media files are not stored directly in MySQL. Instead, the database stores metadata about each upload, including:
+```text
+QuickNotes/
+├── .github/
+│   └── workflows/
+│       └── hyperlist-ci.yml      # GitHub Actions workflow
+│
+├── client/                       # React + Vite frontend
+│   ├── public/                   # Static frontend assets
+│   ├── src/                      # React components and frontend logic
+│   ├── package.json              # Frontend dependencies and scripts
+│   └── vite.config.js            # Vite configuration
+│
+├── server/                       # Node.js + Express backend
+│   ├── db/                       # MySQL database connection
+│   ├── middleware/               # Express middleware
+│   ├── routes/                   # API route files
+│   ├── sql/                      # SQL setup/update scripts
+│   ├── package.json              # Backend dependencies and scripts
+│   └── server.js                 # Express server entry point
+│
+├── .gitignore                    # Files excluded from version control
+├── README.md                     # Project documentation
+└── update-ec2-ip.sh              # EC2 environment update helper script
+```
 
-- HyperList item ID
-- User ID
-- Original filename
-- Stored filename
-- MIME type
-- Media type
-- File size
-- File URL
-- Creation timestamp
+## Setup Instructions
 
-This keeps the database focused on searchable records while Express serves the uploaded files back to the React frontend.
+To run the project locally, clone the repository and install dependencies for both the frontend and backend.
 
-## Project Status
+```bash
+git clone <repository-url>
+cd QuickNotes
+```
 
-This project is currently a course prototype built for Web Development II skills demonstrations.
+Install frontend dependencies:
 
-The current version demonstrates:
+```bash
+cd client
+npm install
+```
 
-1. Full-stack React, Express, and MySQL integration
-2. Nested item organization
-3. File upload handling with Multer
-4. Image, video, and audio rendering
-5. Deployment and testing on AWS EC2
+Install backend dependencies:
+
+```bash
+cd ../server
+npm install
+```
+
+## Environment Variables
+
+This project uses environment variables for configuration. Sensitive values should not be committed to GitHub.
+
+Create a `.env` file in the `server` directory using the expected values for your local MySQL database and session configuration.
+
+Example server `.env` structure:
+
+```env
+DB_HOST=localhost
+DB_USER=your_mysql_user
+DB_PASSWORD=your_mysql_password
+DB_NAME=quicknotes_db
+SESSION_SECRET=your_session_secret
+CLIENT_URL=http://localhost:5173
+```
+
+Create a `.env` file in the `client` directory if needed for the frontend API base URL.
+
+Example client `.env` structure:
+
+```env
+VITE_API_BASE_URL=http://localhost:3001
+```
+
+The actual `.env` files are excluded from version control through `.gitignore`.
+
+## How to Run Locally
+
+Start the backend server:
+
+```bash
+cd server
+node server.js
+```
+
+Start the frontend development server:
+
+```bash
+cd client
+npm run dev
+```
+
+The frontend runs through Vite, and the backend provides the Express API used by the React application.
+
+## Testing and Quality Checks
+
+During development, I used focused utility-function testing and linting practice to validate selected logic, especially around item ordering behavior. This was an early step toward a more complete automated testing workflow.
+
+The project also includes a GitHub Actions workflow for automated project checks when changes are pushed to GitHub.
+
+I would not describe the current project as having complete automated test coverage yet. Future improvements would include expanding test coverage across API routes, React components, authentication behavior, and database-connected features.
+
+## Deployment
+
+HyperList was deployed and tested on an AWS EC2 Ubuntu server. The deployed version uses environment-based configuration so that local development and production testing can use different frontend and backend URLs.
+
+The EC2 deployment helped test the project in a more realistic remote environment rather than only running it locally.
+
+## Security and Configuration
+
+Sensitive configuration values are handled through environment variables rather than being hard-coded into the application.
+
+The `.gitignore` file is used to exclude files and folders that should not be committed, including:
+
+- `.env` files
+- `node_modules/`
+- build output such as `dist/`
+- local cache files
+- local cookie/session artifacts
+- uploaded media files
+- local backup files
+- private key files
+
+The repository preserves the uploads folder structure with a `.gitkeep` file, but actual uploaded media files are excluded from version control.
+
+This helps protect credentials, reduce unnecessary repository size, and keep the project easier to review.
+
+## Development Workflow
+
+This project was developed through an iterative workflow using Git and GitHub. Major updates were organized through branches and commits as the project grew from a basic full-stack note application into a more complete HyperList prototype.
+
+The development process included:
+
+- Building a React frontend and Express backend
+- Creating REST API routes
+- Connecting the application to MySQL
+- Adding nested item relationships
+- Adding navigation improvements
+- Adding media upload support
+- Adding social features
+- Adding Markdown rendering
+- Adding manual list ordering
+- Practicing focused testing and linting
+- Adding GitHub Actions automation
+- Deploying and testing on AWS EC2
+
+AI tools were also used as part of the development workflow for planning, debugging, code review, and communication support. The final implementation decisions, testing, debugging, and demonstration work were completed through hands-on development and review.
 
 ## Future Improvements
 
-Possible next steps include:
+With more time, future improvements could include:
 
-- Breadcrumb navigation
-- A parent/sibling navigation panel
-- Social features such as follows, likes, and comments
+- Drag-and-drop item ordering
+- Persistent restoration of the current working item across login sessions
 - Cloud media storage with AWS S3
-- Thumbnail generation for uploaded images and videos
 - Improved access control for shared HyperList items
 - Search and filtering across nested content
+- More complete automated test coverage
+- Expanded CI/CD deployment automation
+- A more polished production user interface
 
 ## Summary
 
-HyperList Media+ explores a more flexible way to organize information by combining nested structure, text content, and uploaded media. Each item can function as a content node, a container, or both.
+HyperList explores a flexible way to organize information by combining nested structure, Markdown-rendered text, media content, manual ordering, and social interaction features. Each item can function as a content node, a container, or both.
+
+The project also demonstrates a broader development workflow using version control, full-stack development, deployment, environment configuration, automation, security awareness, testing practice, and technical documentation.
