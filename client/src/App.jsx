@@ -60,12 +60,6 @@ function App() {
   }, [user]);
 
   useEffect(() => {
-  if (!user || !currentItem?.id) return;
-
-  saveCurrentWorkingItem(currentItem.id);
-}, [user, currentItem?.id]); 
-
-  useEffect(() => {
     if (!user || !currentItem?.id) return;
 
     saveCurrentWorkingItem(currentItem.id);
@@ -725,13 +719,9 @@ async function submitComment(itemId) {
     }
 
     // The viewing item is temporary and read-only.
-    // It does not change the current working location.
+    // It does not change the Current Working Item.
     setViewingItem(item);
     setStatus(`Viewing ${item.title || 'Untitled Item'} in read-only mode.`);
-
-    if (options.saveCurrent !== false) {
-      saveCurrentWorkingItem(item.id);
-    }
   }
 
   function returnToCurrentItem() {
@@ -913,6 +903,9 @@ async function submitComment(itemId) {
 
   async function createItem() {
     try {
+      const parentId = currentItem?.parent_id || null;
+      const isRootItem = parentId === null;
+
       const response = await fetch(`${API_BASE}/items`, {
         method: 'POST',
         headers: {
@@ -922,7 +915,7 @@ async function submitComment(itemId) {
         body: JSON.stringify({
           title: 'Untitled Item',
           description: '',
-          parentId: null
+          parentId
         })
       });
 
@@ -932,10 +925,19 @@ async function submitComment(itemId) {
         throw new Error(newItem.error || 'Failed to create HyperList item');
       }
 
-      const updatedItems = [...items, newItem];
-      setItems(updatedItems);
+      if (isRootItem) {
+        setItems((prevItems) => [...prevItems, newItem]);
+      }
+
+      setSiblingItems((prevItems) => [...prevItems, newItem]);
+
       selectItem(newItem);
-      setStatus('New HyperList item created.');
+
+      setStatus(
+        isRootItem
+          ? 'New root item created.'
+          : 'New sibling item created.'
+      );
     } catch (error) {
       console.error('Create HyperList item failed:', error);
       setStatus('Failed to create HyperList item.');
@@ -987,6 +989,13 @@ async function submitComment(itemId) {
   async function deleteItem() {
     if (!selectedId) return;
 
+    const itemBeingDeleted = currentItem;
+    const parentBeforeDelete = parentItem;
+
+    const remainingSiblings = siblingItems.filter(
+      (item) => item.id !== selectedId
+    );
+
     try {
       const response = await fetch(`${API_BASE}/items/${selectedId}`, {
         method: 'DELETE',
@@ -999,22 +1008,41 @@ async function submitComment(itemId) {
         throw new Error(data.error || 'Failed to delete HyperList item');
       }
 
-      const updatedItems = items.filter((item) => item.id !== selectedId);
-      setItems(updatedItems);
+      const updatedRootItems = items.filter((item) => item.id !== selectedId);
+      setItems(updatedRootItems);
 
-      if (updatedItems.length > 0) {
-        const nextItem = updatedItems[0];
-        selectItem(nextItem);
-      } else {
-        setSelectedId(null);
-        setCurrentItem(null);
+      if (viewingItem?.id === selectedId) {
         setViewingItem(null);
-        setBreadcrumbPath([]);
-        setTitle('');
-        setDescription('');
-        setMediaItems([]);
       }
 
+      if (remainingSiblings.length > 0) {
+        selectItem(remainingSiblings[0]);
+        setStatus('Item deleted. Moved to the next item in this list.');
+        return;
+      }
+
+      if (parentBeforeDelete) {
+        selectItem(parentBeforeDelete);
+        setStatus('Item deleted. Moved up to the parent item.');
+        return;
+      }
+
+      if (updatedRootItems.length > 0) {
+        selectItem(updatedRootItems[0]);
+        setStatus('Root item deleted. Moved to the next root item.');
+        return;
+      }
+
+      setSelectedId(null);
+      setCurrentItem(null);
+      setViewingItem(null);
+      setBreadcrumbPath([]);
+      setTitle('');
+      setDescription('');
+      setMediaItems([]);
+      setChildItems([]);
+      setParentItem(null);
+      setSiblingItems([]);
       setStatus('HyperList item deleted.');
     } catch (error) {
       console.error('Delete HyperList item failed:', error);
@@ -1333,7 +1361,9 @@ async function submitComment(itemId) {
       <aside className="sidebar">
         <div className="sidebar-header">
           <h2>HyperList</h2>
-          <button onClick={createItem}>New Root Item</button>
+          <button onClick={createItem}>
+            {currentItem?.parent_id ? 'New Sibling Item' : 'New Root Item'}
+          </button>
         </div>
 
         <div className="parent-sibling-frame">
