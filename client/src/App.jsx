@@ -6,6 +6,23 @@ import remarkGfm from 'remark-gfm';
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 const SERVER_BASE = API_BASE.replace(/\/api\/?$/, '');
 
+function getPlainTextPreview(markdown, maxLength) {
+  if (!markdown) return 'No description yet...';
+
+  const plainText = markdown
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/[`*_~#>]/g, '')
+    .replace(/^\s*[-+]\s+/gm, '')
+    .replace(/^\s*\d+\.\s+/gm, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return plainText.length > maxLength
+    ? `${plainText.slice(0, maxLength).trim()}...`
+    : plainText || 'No description yet...';
+}
+
 function App() {
   const [authMode, setAuthMode] = useState('login');
   const [email, setEmail] = useState('');
@@ -989,7 +1006,6 @@ async function submitComment(itemId) {
   async function deleteItem() {
     if (!selectedId) return;
 
-    const itemBeingDeleted = currentItem;
     const parentBeforeDelete = parentItem;
 
     const remainingSiblings = siblingItems.filter(
@@ -1381,11 +1397,7 @@ async function submitComment(itemId) {
                 title={parentItem.title || 'Untitled Parent Item'}
               >
                 <strong>{parentItem.title || 'Untitled Parent Item'}</strong>
-                <span>
-                  {parentItem.description
-                    ? parentItem.description.slice(0, 60)
-                    : 'No description yet...'}
-                </span>
+                <span>{getPlainTextPreview(parentItem.description, 60)}</span>
               </button>
             </section>
           ) : (
@@ -1452,11 +1464,7 @@ async function submitComment(itemId) {
                     >
                       <div className="note-item-content">
                         <strong>{item.title || 'Untitled Item'}</strong>
-                        <span>
-                          {item.description
-                            ? item.description.slice(0, 40)
-                            : 'No description yet...'}
-                        </span>
+                        <span>{getPlainTextPreview(item.description, 40)}</span>
                       </div>
 
                       {isOrderingMode && (
@@ -1642,11 +1650,7 @@ async function submitComment(itemId) {
                       >
                         <div className="child-card-content">
                           <strong>{child.title || 'Untitled Child Item'}</strong>
-                          <span>
-                            {child.description
-                              ? child.description.slice(0, 50)
-                              : 'No description yet...'}
-                          </span>
+                          <span>{getPlainTextPreview(child.description, 50)}</span>
                         </div>
 
                         {isPreviewedChild && (
